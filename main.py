@@ -420,9 +420,9 @@ class AnalysisEngine:
         )
         first_span = True
         for s, e in placement_ranges:
-            ax.axvline(s, linestyle="--", linewidth=1, color=RED, alpha=0.5)
-            ax.axvline(e, linestyle="--", linewidth=1, color=RED, alpha=0.5)
-            ax.axvspan(s - 0.5, e + 0.5, alpha=0.10, color=RED,
+            ax.axvline(s, linestyle="--", linewidth=1, color="#4C72B0", alpha=0.5)
+            ax.axvline(e, linestyle="--", linewidth=1, color="#4C72B0", alpha=0.5)
+            ax.axvspan(s - 0.5, e + 0.5, alpha=0.13, color="#4C72B0",
                        label="Placement Matches" if first_span else None)
             first_span = False
 
@@ -610,7 +610,7 @@ class AnalysisEngine:
         )
         first_span = True
         for s, e in placement_ranges:
-            ax.axvspan(s - 0.5, e + 0.5, alpha=0.10, color=RED,
+            ax.axvspan(s - 0.5, e + 0.5, alpha=0.13, color="#4C72B0",
                        label="Placement Matches" if first_span else None)
             first_span = False
 
@@ -659,6 +659,80 @@ class AnalysisEngine:
         ax.set_xlabel("Match Index (Oldest → Most Recent)", color="#444")
         ax.set_ylabel("Rank", color="#444")
         ax.set_title("Valorant Rank Trend — Actual vs Counterfactual", fontsize=16, pad=12)
+        for spine in ax.spines.values():
+            spine.set_edgecolor("#ccc")
+        ax.legend(loc="best", framealpha=0.9, fontsize=9)
+        plt.tight_layout()
+        plt.savefig(out_path, dpi=150, bbox_inches="tight", facecolor="white")
+        plt.close(fig)
+
+    def _plot_actual_rr(self, ledger_entries, actual_elos,
+                        recent_is_placement, recent_is_newly_placed,
+                        recent_matches, out_path: Path):
+        """Plot only the actual RR trend — no counterfactual lines."""
+        match_indices = list(range(len(ledger_entries)))
+
+        actual_clean = [
+            elo if elo is not None else (actual_elos[i - 1] if i > 0 else 0)
+            for i, elo in enumerate(actual_elos)
+        ]
+        min_elo = min(v for v in actual_clean if v)
+        max_elo = max(v for v in actual_clean if v)
+
+        fig, ax = plt.subplots(figsize=(14 * 1.4, 6 * 1.4))
+        fig.patch.set_facecolor("white")
+        ax.set_facecolor("#f8f9fa")
+
+        ax.plot(match_indices, actual_clean, label="Actual RR", color="#147C86",
+                linewidth=2.75, marker="o", markersize=4, zorder=100, alpha=0.9)
+
+        # Rank tier grid lines
+        for rname in VALORANT_RANKS:
+            for target in ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ascendant"]:
+                if target in rname:
+                    ax.axhline(VALORANT_RANKS.index(rname) * 100,
+                               color="#bbb", linestyle=":", linewidth=0.7, alpha=0.7, zorder=0)
+
+        # Vertical match lines
+        for xi in match_indices:
+            ax.axvline(xi, color="#ccc", linestyle="dashed", alpha=0.5, linewidth=0.6)
+
+        # Rank-up / derank lines
+        rank_up_plotted = derank_plotted = False
+        for i, e in enumerate(ledger_entries):
+            if e["elo_after"] is None or e["elo_before"] is None:
+                continue
+            if e["tier_after"] != e["tier_before"] and e["tier_before"] is not None:
+                if e["elo_after"] > e["elo_before"]:
+                    ax.axvline(i, color="#2a9d2a", alpha=0.6, linestyle="-", linewidth=1.2,
+                               label="Rank-Up" if not rank_up_plotted else "")
+                    rank_up_plotted = True
+                else:
+                    ax.axvline(i, color=RED, alpha=0.6, linestyle="-", linewidth=1.2,
+                               label="Derank" if not derank_plotted else "")
+                    derank_plotted = True
+
+        # Placement shading (blue)
+        placement_ranges = self._calculate_placement_regions(
+            recent_matches, recent_is_placement, recent_is_newly_placed,
+            reverse=True, offset=-1
+        )
+        first_span = True
+        for s, e in placement_ranges:
+            ax.axvspan(s - 0.5, e + 0.5, alpha=0.13, color="#4C72B0",
+                       label="Placement Matches" if first_span else None)
+            first_span = False
+
+        ax.set_ylim(min_elo - 10, max_elo + 10)
+        yticks  = list(range((min_elo // 100) * 100, ((max_elo // 100) + 2) * 100, 100))
+        ylabels = [map_rank_value(v / 100, include_rr=False) if v > 0 else "" for v in yticks]
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(ylabels)
+        ax.set_xticks(match_indices)
+        ax.set_xticklabels(match_indices, rotation=0, fontsize=8)
+        ax.set_xlabel("Match Index (Oldest → Most Recent)", color="#444")
+        ax.set_ylabel("Rank", color="#444")
+        ax.set_title("Valorant Rank Trend — Actual RR", fontsize=16, pad=12)
         for spine in ax.spines.values():
             spine.set_edgecolor("#ccc")
         ax.legend(loc="best", framealpha=0.9, fontsize=9)
@@ -729,7 +803,7 @@ class AnalysisEngine:
         sty_section = _sty("Section",
             fontSize=13, leading=17, textColor=VAL_RED,
             fontName="Helvetica-Bold", alignment=TA_LEFT,
-            spaceBefore=14, spaceAfter=4)
+            spaceBefore=6, spaceAfter=4)
         sty_body = _sty("Body",
             fontSize=9.5, leading=14, textColor=BLACK,
             fontName="Helvetica")
@@ -742,9 +816,7 @@ class AnalysisEngine:
             spaceAfter=10)
         sty_callout = _sty("Callout",
             fontSize=10, leading=14, textColor=BLACK,
-            fontName="Helvetica", backColor=LIGHT_GREY,
-            borderPad=6, leftIndent=10, rightIndent=10,
-            spaceBefore=6, spaceAfter=6)
+            fontName="Helvetica")
         sty_link = _sty("Link",
             fontSize=9.5, leading=14, textColor=colors.HexColor("#1155CC"),
             fontName="Helvetica")
@@ -775,7 +847,7 @@ class AnalysisEngine:
                 header_row.append(Paragraph("", sty_body))
                 value_row.append(Paragraph("", sty_body))
             tbl = Table([header_row, value_row],
-                        colWidths=[col_w] * cols, rowHeights=[14, 22])
+                        colWidths=[col_w] * cols, rowHeights=[18, 26])
             tbl.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GREY),
                 ("ROWBACKGROUNDS", (0, 0), (-1, -1), [LIGHT_GREY, WHITE]),
@@ -789,7 +861,21 @@ class AnalysisEngine:
 
         def _section_rule():
             return HRFlowable(width="100%", thickness=1,
-                              color=VAL_RED, spaceAfter=6, spaceBefore=2)
+                              color=VAL_RED, spaceAfter=4, spaceBefore=0)
+
+        def _callout(text):
+            """Shaded callout box — replaces sty_callout which doesn't support backColor."""
+            inner = Paragraph(text, sty_callout)
+            tbl = Table([[inner]], colWidths=[USABLE_W])
+            tbl.setStyle(TableStyle([
+                ("BACKGROUND",    (0, 0), (-1, -1), LIGHT_GREY),
+                ("BOX",           (0, 0), (-1, -1), 0.75, STEEL),
+                ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+                ("TOPPADDING",    (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]))
+            return tbl
 
         def _img(fname, width=None, caption=None):
             p = out_dir / fname
@@ -801,11 +887,12 @@ class AnalysisEngine:
             w = width or USABLE_W
             h = w * (img_h / img_w)
             img_elem = RLImage(str(p), width=w, height=h)
+            elems = [Spacer(1, 4), img_elem]
             if caption:
-                block = KeepTogether([img_elem, Paragraph(caption, sty_caption)])
+                elems.append(Paragraph(caption, sty_caption))
             else:
-                block = KeepTogether([img_elem])
-            return [block]
+                elems.append(Spacer(1, 6))
+            return elems
 
         # ── Cover / header block ──────────────────────────────────────────────
         acts_label = ", ".join(f"Ep {e} · Act {a}" for e, a in acts_of_interest)
@@ -829,10 +916,9 @@ class AnalysisEngine:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
             ("LEFTPADDING",   (0, 0), (-1, -1), 14),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 14),
-            ("ROUNDEDCORNERS", [4]),
         ]))
         story.append(banner)
-        story.append(Spacer(1, 14))
+        story.append(Spacer(1, 10))
 
         # ── Section 1: At a Glance ────────────────────────────────────────────
         story.append(Paragraph("At a Glance", sty_section))
@@ -848,14 +934,14 @@ class AnalysisEngine:
             ("W / L",            f"{wins} / {losses}"),
             ("Current Rank",     current_rank),
         ]))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
         story.append(_stat_cards([
             ("Estimated True MMR", estimated_mmr_str),
             ("Counterfactual Rank\n(no-buffer + adj)", cf_rank),
             ("Most Balanced Lobby", f"{results['lobby_balance']['most_balanced'][0]:.3f} σ"),
             ("Least Balanced Lobby", f"{results['lobby_balance']['least_balanced'][0]:.3f} σ"),
         ]))
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 8))
 
         # ── Explanatory prose ─────────────────────────────────────────────────
         story.append(Paragraph(
@@ -865,7 +951,7 @@ class AnalysisEngine:
             f"per-match RR deltas from ELO snapshots, and builds lobby rank estimates "
             f"using a spline fitted to teammates' and opponents' visible tiers.",
             sty_body))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
         mmr_delta = ""
         try:
@@ -884,27 +970,25 @@ class AnalysisEngine:
         except Exception:
             pass
         if mmr_delta:
-            story.append(Paragraph(mmr_delta, sty_callout))
-            story.append(Spacer(1, 6))
+            story.append(_callout(mmr_delta))
+            story.append(Spacer(1, 4))
 
         # ── Section 2: Rank Trajectory ────────────────────────────────────────
         story.append(Paragraph("Rank Trajectory — Lobby Rank Averages", sty_section))
         story.append(_section_rule())
         story.append(Paragraph(
             "The chart below tracks three lobby-rank averages across every match, "
-            "chronologically oldest on the left. "
+            "chronologically most recent on the left. "
             "<b>Lobby avg</b> (green) is the full-lobby mean excluding the tracked player; "
             "<b>allies</b> (blue) and <b>opponents</b> (orange) are split by team. "
             "Divergence between ally and opponent averages is the primary signal of "
             "matchmaker imbalance — sustained gaps over many games are statistically "
             "meaningful; single-game outliers rarely are.",
             sty_body))
-        story.append(Spacer(1, 8))
         story.extend(_img("rank_trends.png",
             caption="Figure 1 — Lobby rank averages over time. "
                     "Vertical dashed lines mark game-patch boundaries; "
                     "shaded bands highlight placement match windows."))
-        story.append(Spacer(1, 8))
         story.extend(_img("rank_trends_n15.png",
             caption="Figure 1b — Same chart restricted to the 15 most-recent matches. "
                     "Zooms into current-form trend, reducing noise from older acts."))
@@ -916,11 +1000,10 @@ class AnalysisEngine:
             "Standard deviation of lobby ranks (σ) measures how evenly skilled "
             "the matchmaker assembled each game. A low σ means all ten players "
             "were clustered near the same tier; a high σ means a wide rank spread "
-            "was pulled together — the classic 'smurf lobby' signature. "
+            "was pulled together."
             "The kernel density below shows where this player's matches land "
             "relative to the distribution's own mean and ±1σ / ±2σ bands.",
             sty_body))
-        story.append(Spacer(1, 8))
         story.extend(_img("lobby_std_distribution.png",
             caption="Figure 2 — Kernel density of per-match lobby σ. "
                     "Percentages annotate the share of matches falling within each σ band. "
@@ -938,7 +1021,7 @@ class AnalysisEngine:
             "we produce counterfactual trajectories — showing what rank this player "
             "would hold if the raw performance signal propagated without dampening.",
             sty_body))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
 
         # Build a compact ledger summary table
         shield_count = sum(1 for e in ledger_entries if e.get("shield_used"))
@@ -978,7 +1061,7 @@ class AnalysisEngine:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("LEFTPADDING",   (0, 0), (-1, -1), 6),
         ]))
-        story.append(KeepTogether([event_tbl, Spacer(1, 10)]))
+        story.append(KeepTogether([event_tbl, Spacer(1, 6)]))
         story.extend(_img("counterfactual_rr.png",
             caption="Figure 3 — Actual RR path (teal) vs. counterfactual paths without shields "
                     "(orange) and without buffers (purple). Vertical bars mark per-match shield "
@@ -994,7 +1077,7 @@ class AnalysisEngine:
                 "consistently queuing into specific team compositions — "
                 "useful context for agent-pick decisions.",
                 sty_body))
-            story.append(Spacer(1, 8))
+            story.append(Spacer(1, 4))
             role_header = [Paragraph(h, sty_tbl_hdr) for h in ["Role", "Share"]]
             role_rows = [role_header] + [
                 [Paragraph(role, sty_tbl_cel_l),
@@ -1013,7 +1096,7 @@ class AnalysisEngine:
                 ("LEFTPADDING",   (0, 0), (-1, -1), 8),
             ]))
             story.append(KeepTogether([role_tbl]))
-            story.append(Spacer(1, 10))
+            story.append(Spacer(1, 6))
 
         # ── Section 6: Round Timing Statistics ───────────────────────────────
         if round_stats_out:
@@ -1028,7 +1111,7 @@ class AnalysisEngine:
                 f"defuse time → latest kill time → plant time + spike timer → game-length average. "
                 f"Rounds outside the 3 – 100 s window are discarded.",
                 sty_body))
-            story.append(Spacer(1, 8))
+            story.append(Spacer(1, 4))
 
             story.append(_stat_cards([
                 ("Sample Rounds",    ov.get("sample_rounds", "—")),
@@ -1036,14 +1119,14 @@ class AnalysisEngine:
                 ("P25 / P75",        f"{ov.get('p25', '—')} / {ov.get('p75', '—')} s"),
                 ("Plant Rate",       f"{ov.get('plant_rate', 0)*100:.1f}%"),
             ]))
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 4))
             story.append(_stat_cards([
                 ("Median Plant Time", f"{ov.get('median_plant_time', '—')} s"),
                 ("Median Post-Plant", f"{ov.get('median_post_plant', '—')} s"),
                 ("Defuse Rate",       f"{ov.get('defuse_rate', 0)*100:.1f}%"),
                 ("Elim Rate\n(no-plant rounds)", f"{ov.get('elim_rate', 0)*100:.1f}%"),
             ]))
-            story.append(Spacer(1, 10))
+            story.append(Spacer(1, 6))
 
             story.append(Paragraph(
                 f"A median round of <b>{ov.get('median', '—')} s</b> with a plant rate of "
@@ -1054,7 +1137,7 @@ class AnalysisEngine:
                 f"how quickly defenders respond after the spike is placed; values below 20 s "
                 f"typically indicate fast rotations and aggressive defuse attempts.",
                 sty_body))
-            story.append(Spacer(1, 8))
+            story.append(Spacer(1, 6))
 
             # Per-map breakdown
             by_map = round_stats_out.get("by_map", {})
@@ -1086,7 +1169,7 @@ class AnalysisEngine:
                     ("LEFTPADDING",   (0, 0), (-1, -1), 6),
                 ]))
                 story.append(KeepTogether([map_tbl]))
-                story.append(Spacer(1, 10))
+                story.append(Spacer(1, 6))
 
         # ── Section 7: Interactive Resources ─────────────────────────────────
         story.append(Paragraph("Interactive Reports & Tools", sty_section))
@@ -1132,17 +1215,16 @@ class AnalysisEngine:
             ("LEFTPADDING",   (0, 0), (-1, -1), 6),
         ]))
         story.append(KeepTogether([res_tbl]))
-        story.append(Spacer(1, 10))
-        story.append(Paragraph(
+        story.append(Spacer(1, 6))
+        story.append(_callout(
             "To use the interactive tools: open the output folder in your file explorer, "
             "then double-click either HTML file. Both tools run entirely in your browser "
-            "with no server or internet connection required.",
-            sty_callout))
+            "with no server or internet connection required."))
 
         # ── Footer / methodology note ─────────────────────────────────────────
-        story.append(Spacer(1, 16))
+        story.append(Spacer(1, 10))
         story.append(HRFlowable(width="100%", thickness=0.5, color=STEEL))
-        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
         story.append(Paragraph(
             f"<b>Methodology note.</b> MMR data sourced from the Henrik Dev Unofficial Valorant API. "
             f"Lobby rank estimates use a monotone cubic spline fitted to observed tiers; unrated players "
@@ -1154,7 +1236,14 @@ class AnalysisEngine:
             f"timespan {timespan} days.",
             _sty("Footnote", fontSize=7.5, leading=11, textColor=DIM_GREY, fontName="Helvetica")))
 
-        doc.build(story)
+        def _add_page_number(canvas, doc):
+            canvas.saveState()
+            canvas.setFont("Helvetica", 7)
+            canvas.setFillColor(DIM_GREY)
+            canvas.drawRightString(PAGE_W - MARGIN, 0.4 * inch, f"Page {doc.page}")
+            canvas.restoreState()
+
+        doc.build(story, onFirstPage=_add_page_number, onLaterPages=_add_page_number)
         return pdf_path
 
     # ── Main run method ───────────────────────────────────────────────────────
@@ -1286,6 +1375,15 @@ class AnalysisEngine:
             recent_matches, out_dir / "counterfactual_rr.png"
         )
         self.log("💾  Saved counterfactual_rr.png")
+
+        # ── 8b. Plot: Actual RR only ──────────────────────────────────────────
+        self.log("🎨  Generating actual RR chart (no counterfactuals)...")
+        self._plot_actual_rr(
+            ledger_entries, actual_elos,
+            recent_is_placement, recent_is_newly_placed,
+            recent_matches, out_dir / "actual_rr.png"
+        )
+        self.log("💾  Saved actual_rr.png")
 
         # ── 9. HTML Report ────────────────────────────────────────────────────
         self.log("🌐  Generating interactive HTML agent report...")
