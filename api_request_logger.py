@@ -1,8 +1,6 @@
 from datetime import datetime
-import math
 import threading
-from typing import Dict, List
-
+from typing import List
 from pathlib import Path
 import time
 import json
@@ -10,71 +8,104 @@ import json
 from utils import ensure_dirs_exist
 
 
-LOG_FILENAME = 'api_logfile.log'
+LOG_FILENAME = "api_logfile.log"
 
 
-UNSET = object()
 class LogRecord:
-    def __init__(self, record: dict):
-        self.__record_dict = record
-        self.timestamp: float = record['timestamp']
-        self.data: dict = {'uri': record['uri'], 'status': int(record['status'])}
-    
-    def as_dict(self):
-        return self.__record_dict
-    
-    def __repr__(self):
-        ts = datetime.fromtimestamp(self.timestamp)
-        ts_str = ts.strftime('%d-%m-%Y %I:%M:%S,%f %p')
+    """Represents a single API request log entry."""
+
+    def __init__(self, record: dict) -> None:
+        """
+        Args:
+            record: Raw dict with keys 'uri', 'status', and 'timestamp'.
+        """
+        self._record_dict = record
+        self.timestamp: float = record["timestamp"]
+        self.data: dict = {"uri": record["uri"], "status": int(record["status"])}
+
+    def as_dict(self) -> dict:
+        """Return the original raw record as a dict (for serialization)."""
+        return self._record_dict
+
+    def __repr__(self) -> str:
+        ts_str = datetime.fromtimestamp(self.timestamp).strftime(
+            "%d-%m-%Y %I:%M:%S,%f %p"
+        )
         return f"{ts_str} - {self.data!r}"
 
+
 class RequestLogger:
-    def __init__(self, filepath=None):
+    """
+    Persists API request logs to a JSON file and provides
+    thread-safe read/write access.
+    """
+
+    def __init__(self, filepath: str | None = None) -> None:
+        """
+        Load existing log records from disk, creating the file if needed.
+
+        Args:
+            filepath: Path to the JSON log file. Defaults to LOG_FILENAME.
+        """
         self.lock = threading.Lock()
-        filepath = filepath or LOG_FILENAME
-        self.filepath = filepath
+        self.filepath: str = filepath or LOG_FILENAME
 
-        ensure_dirs_exist(filepath)
-        Path(filepath).touch(exist_ok=True)
-        with open(filepath, 'r') as f:
-            content: str = f.read()
-            if content.strip() == '':
-                content = '[]'
-            records: list = json.loads(content)
-        
-        self.records: List[LogRecord] = [LogRecord(v) for v in records]
+        ensure_dirs_exist(self.filepath)
 
-    def get_logs_from_last_seconds(self, seconds:int=60) -> List[LogRecord]:
-        # Calculate the time 60 seconds ago
-        current_time = datetime.now()
+        # Create the file if it doesn't exist, then load its contents.
+        path = Path(self.filepath)
+        path.touch(exist_ok=True)
 
-        # Read log file and filter lines within the last 60 seconds
-        recent_logs: List[LogRecord] = []
-        for log in self.records:
-            request_timestamp = datetime.fromtimestamp(log.timestamp)
-            # request_timestamp = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S,%f')
-            time_since_request = (current_time - request_timestamp).total_seconds()
-            
-            if time_since_request <= seconds:
-                recent_logs.append(log)
+        content = path.read_text().strip() or "[]"
+        records: list[dict] = json.loads(content)
+        self.records: List[LogRecord] = [LogRecord(r) for r in records]
 
-        recent_logs.sort(key=lambda log: log.timestamp, reverse=False)
-        return recent_logs
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
-    def __save(self):
+    def log(self, uri: str, status: int) -> None:
+        """
+        Append a new request record and flush to disk.
+
+        Args:
+            uri:    The request URI.
+            status: The HTTP status code returned.
+        """
+        new_record = {"uri": uri, "status": status, "timestamp": time.time()}
         with self.lock:
-            data = self.as_list()
-            content = json.dumps(data, indent=2, separators=(",", ": "))
-            
-            with open(self.filepath, 'w') as fp:
-                fp.write(content)
-        
-    def as_list(self):
-        return [v.as_dict() for v in self.records]
-    
-    def log(self, uri: str, status: int):
-        with self.lock:
-            new_record = {'uri': uri, 'status': status, 'timestamp': time.time()}
             self.records.append(LogRecord(new_record))
-            
-        self.__save()
+        self._save()
+
+    def get_logs_from_last_seconds(self, seconds: int = 60) -> List[LogRecord]:
+        """
+        Return records whose timestamps fall within the last *seconds* seconds,
+        sorted chronologically (oldest first).
+
+        Args:
+            seconds: Look-back window in seconds. Defaults to 60.
+
+        Returns:
+            Filtered and sorted list of LogRecord objects.
+        """
+        now = datetime.now()
+        recent: List[LogRecord] = [
+            log for log in self.records
+            if (now - datetime.fromtimestamp(log.timestamp)).total_seconds() <= seconds
+        ]
+        return sorted(recent, key=lambda log: log.timestamp)
+
+    def as_list(self) -> list[dict]:
+        """Return all records as a list of raw dicts (for serialization)."""
+        return [r.as_dict() for r in self.records]
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _save(self) -> None:
+        """Serialize all records to disk as formatted JSON (thread-safe)."""
+        with self.lock:
+            content = json.dumps(self.as_list(), indent=2, separators=(",", ": "))
+            with open(self.filepath, "w") as fp:
+                fp.write(content)

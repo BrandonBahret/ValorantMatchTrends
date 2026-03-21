@@ -1,3 +1,13 @@
+average_recent_ranks (unorganized).ipynb
+charts/
+code_generation/
+config.json
+data/
+distributions of performance.ipynb
+outputs/
+scripts/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
