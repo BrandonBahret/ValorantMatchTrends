@@ -4,6 +4,8 @@ A desktop GUI tool that fetches match history for any Valorant player and genera
 
 ---
 
+![app screenshot](https://github.com/BrandonBahret/ValorantMatchTrends/blob/main/app_screenshot.png)
+
 ## Features
 
 - 🎯 Look up any player by **Riot ID** (name + tag) across all regions
