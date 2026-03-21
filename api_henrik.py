@@ -319,35 +319,6 @@ class UnofficialApi:
         
         return data
 
-    # === MANUALLY ADDED ===    
-    # def get_match_history(self, puuid: str, mode=ModesApiEnum.COMPETITIVE) -> List['MatchReference']:
-    #     INCREMENT_SIZE = 20
-    #     def inner__get_match_ids(puuid: str, begin: int=0, end: int=INCREMENT_SIZE):
-    #         endpoint = 'https://api.henrikdev.xyz/valorant/v1/raw'
-    #         payload = {
-    #             "type": "matchhistory",
-    #             "value": puuid,
-    #             "region": 'na',
-    #             'queries': f'?queue={mode.value}&startIndex={begin}&endIndex={end}'
-    #         }
-    #         response = self.uncached_post(endpoint, payload)
-    #         response.raise_for_status()
-    #         return response.json()
-
-    #     history = []
-
-    #     data = inner__get_match_ids(puuid)
-    #     history.extend(map(MatchReference, data['History']))
-    #     total = data['Total']
-
-    #     index = INCREMENT_SIZE
-    #     while len(history) != total:
-    #         data = inner__get_match_ids(puuid, index, index+INCREMENT_SIZE)
-    #         history.extend(map(MatchReference, data['History']))
-    #         index += INCREMENT_SIZE
-        
-    #     return sorted(history, key=lambda e: e.timestamp)
-
     def get_match_history(self, puuid: str, mode=ModesApiEnum.COMPETITIVE, region: 'AffinitiesEnum'='na') -> List['MatchReference']:
         INCREMENT_SIZE = 25
         NUM_THREADS = 3  # Adjust as needed
