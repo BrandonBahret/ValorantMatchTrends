@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
 # ---------------------------------------------------------------------------
 # Third-party imports
@@ -328,8 +328,9 @@ def select_from_dict(
 # ---------------------------------------------------------------------------
 # Singleton decorator
 # ---------------------------------------------------------------------------
+T = TypeVar("T")
 
-def singleton(cls: Type) -> Callable:
+def singleton(cls: Type[T]) -> Callable[..., T]:
     """Class decorator that enforces a single shared instance per class.
 
     If the class defines ``__post_init__``, it is called once after the first
@@ -373,7 +374,7 @@ class UnofficialApi:
                  ``config.json`` at import time.
     """
 
-    def __init__(self, api_key: Optional[str] = API_KEY) -> None:
+    def __init__(self, api_key: Optional[str] = API_KEY):
         self.__api_key    = api_key
         self.__base_uri   = "https://api.henrikdev.xyz"
         self.__swagger_url = (

@@ -6,7 +6,8 @@ data/
 distributions of performance.ipynb
 outputs/
 scripts/
-
+caches/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
