@@ -1,6 +1,6 @@
 # Valorant Rank Analyzer
 
-A desktop GUI tool that fetches match history for any Valorant player and generates charts, graphs, and an interactive HTML reports — all in one click.
+A desktop GUI tool that fetches match history for any Valorant player and generates charts, graphs, and interactive HTML reports — all in one click.
 
 ---
 
