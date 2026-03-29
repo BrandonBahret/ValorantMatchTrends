@@ -35,6 +35,7 @@ from plots import (
     plot_actual_rr,
 )
 from pdf_report import generate_pdf
+from generate_match_history import write_match_history
 
 
 class AnalysisEngine:
@@ -82,7 +83,7 @@ class AnalysisEngine:
 
         # ── 2. Match history ──────────────────────────────────────────────────
         self.log("📡  Fetching and updating match history (this may take a moment)...")
-        db.update_match_history_for_puuid(my_puuid)
+        # db.update_match_history_for_puuid(my_puuid) # TODO: CONSIDER
 
         self.log(f"📂  Loading up to {match_count_max} matches across "
                  f"{len(acts_of_interest)} selected act(s)...")
@@ -177,13 +178,45 @@ class AnalysisEngine:
         )
         self.log("💾  Saved actual_rr.png")
 
-        # ── 9. HTML Report ────────────────────────────────────────────────────
-        self.log("🌐  Generating interactive HTML agent report...")
-        html_dir = out_dir / "agent_report"
+        # ── 9. Interactive HTML Report ────────────────────────────────────────
+        self.log("🌐  Generating interactive HTML report...")
+        html_dir = out_dir / "interactive_report"
         html_dir.mkdir(exist_ok=True)
+
+        # generate_html_report writes report_data.js (and possibly an old index.html)
+        # into html_dir — we overwrite any old index.html with our own below.
         generate_html_report(recent_matches, my_puuid,
                              output_file=str(html_dir / "index.html"))
-        self.log("💾  Saved agent_report/index.html")
+
+        # Copy our index.html dashboard (lives next to engine.py)
+        webpage_html_files = ["agents.html", "index.html", "match-history.html", "meta.html", "util.html", "shared.css"]
+        for each_page in webpage_html_files:
+            dashboard_src = Path(__file__).parent / each_page
+            if dashboard_src.exists():
+                shutil.copy2(dashboard_src, html_dir / each_page)
+                self.log(f"💾  Copied {each_page} dashboard")
+            else:
+                self.log(f"⚠️  {each_page} not found next to engine.py — skipped.")
+
+        self.log("💾  Saved interactive_report/")
+
+        # ── 9b. Match history JS (consumed by match-history.html) ─────────────
+        self.log("📋  Generating match_history.js...")
+        try:
+            write_match_history(
+                recent_matches=recent_matches,
+                recent_mmr=recent_mmr,
+                my_puuid=my_puuid,
+                player_name=player_name,
+                player_tag=player_tag,
+                region=region,
+                output_dir=html_dir,
+                filename="match_history.js",
+            )
+            self.log("💾  Saved interactive_report/match_history.js")
+        except Exception as exc:
+            import traceback
+            self.log(f"⚠️  match_history.js generation failed: {exc}\n{traceback.format_exc()}")
 
         # ── 10. Summary text ──────────────────────────────────────────────────
         self.log("📝  Writing analysis summary...")
@@ -218,14 +251,15 @@ class AnalysisEngine:
             f.write("\n".join(summary_lines))
         self.log("💾  Saved summary.txt")
 
-        # ── 11. Round stats JSON ──────────────────────────────────────────────
+        # ── 11. Round stats — write round_stats.js into interactive_report/ ───
         self.log("🎲  Collecting round stats...")
         round_stats_out = self._collect_round_stats(
             recent_matches, recent_mmr, my_puuid,
-            acts_of_interest, player_name, player_tag, region, out_dir
+            acts_of_interest, player_name, player_tag, region,
+            out_dir, html_dir,
         )
 
-        # ── 12. Copy utility_recharge_calculator.html ─────────────────────────
+        # ── 12. Copy utility_recharge_calculator.html (legacy standalone) ─────
         util_src = Path(__file__).parent / "utility_recharge_calculator.html"
         if util_src.exists():
             shutil.copy2(util_src, out_dir / "utility_recharge_calculator.html")
@@ -279,10 +313,18 @@ class AnalysisEngine:
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
-    def _collect_round_stats(self, recent_matches, recent_mmr, my_puuid,
-                              acts_of_interest, player_name, player_tag,
-                              region, out_dir) -> Optional[dict]:
-        """Extract per-round records and write round_stats.json."""
+    def _collect_round_stats(
+        self,
+        recent_matches, recent_mmr, my_puuid,
+        acts_of_interest, player_name, player_tag,
+        region, out_dir: Path, html_dir: Path,
+    ) -> Optional[dict]:
+        """
+        Extract per-round records and write:
+          • interactive_report/round_stats.js  — loaded by index.html via <script>
+          • round_stats.json                   — kept alongside other outputs for
+                                                 reference / PDF generation
+        """
         all_rounds = []
         skipped_rs = 0
         try:
@@ -303,7 +345,7 @@ class AnalysisEngine:
                         pass
 
             if not all_rounds:
-                self.log("⚠️  No round data available — round_stats.json skipped.")
+                self.log("⚠️  No round data available — round_stats files skipped.")
                 return None
 
             by_rank_raw: dict = defaultdict(list)
@@ -332,11 +374,24 @@ class AnalysisEngine:
                 "by_act":  {k: compute_stats(v) for k, v in by_act_raw.items()  if v},
                 "by_map":  {k: compute_stats(v) for k, v in by_map_raw.items()  if v},
             }
-            with open(out_dir / "round_stats.json", "w", encoding="utf-8") as f:
+
+            # JS file — consumed by index.html in interactive_report/
+            js_path = html_dir / "round_stats.js"
+            with open(js_path, "w", encoding="utf-8") as f:
+                f.write("// Auto-generated by engine.py — do not edit manually\n")
+                f.write("window.ROUND_STATS_DATA = ")
                 json.dump(round_stats_out, f, indent=2, ensure_ascii=False)
-            self.log(f"💾  Saved round_stats.json ({len(all_rounds)} rounds)")
+                f.write(";\n")
+            self.log(f"💾  Saved interactive_report/round_stats.js ({len(all_rounds)} rounds)")
+
+            # JSON file — kept at the top level for reference / PDF generation
+            json_path = out_dir / "round_stats.json"
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(round_stats_out, f, indent=2, ensure_ascii=False)
+            self.log("💾  Saved round_stats.json")
+
             return round_stats_out
 
         except Exception as exc:
-            self.log(f"⚠️  round_stats.json skipped: {exc}")
+            self.log(f"⚠️  round_stats files skipped: {exc}")
             return None

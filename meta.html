@@ -1,0 +1,262 @@
+<style>
+/* ── META LAYOUT ────────────────────────────────────────── */
+.meta-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: calc(100vh - 52px); }
+.meta-sidebar { border-right: 1px solid var(--border); padding: var(--sidebar-padding); display: flex; flex-direction: column; gap: 12px; background: var(--panel); position: sticky; height: calc(100vh - 52px); max-height: calc(100vh - 52px); top: 52px; overflow-y: auto; }
+.meta-main { padding: 22px; display: flex; flex-direction: column; gap: 22px; }
+
+.pfbtn { display: block; width: 100%; padding: 9px 12px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); font-family: var(--mono); font-size: 13px; cursor: pointer; transition: all .12s; text-align: left; letter-spacing: .04em; margin-bottom: 4px; }
+.pfbtn.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+
+.section-title { font-family: var(--display); font-size: 10px; letter-spacing: .18em; color: var(--text-dim); text-transform: uppercase; display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.phase-dist-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 4px; }
+.pd-card { border: 1px solid var(--border); background: var(--panel); padding: 14px; text-align: center; position: relative; overflow: hidden; }
+.pd-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--acc, var(--cyan)); }
+.pd-name { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.pd-pct { font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--acc, var(--cyan)); line-height: 1; }
+.pd-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 5px; }
+
+.meta-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.meta-panel { border: 1px solid var(--border); background: var(--panel); padding: 18px; }
+
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-name { font-family: var(--mono); font-size: 11px; color: var(--text); min-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 5px; background: var(--border); position: relative; min-width: 40px; }
+.bar-fill { height: 100%; position: absolute; top: 0; left: 0; background: var(--cyan-dim); border-right: 2px solid var(--cyan); transition: width .3s; }
+.bar-pct { font-family: var(--mono); font-size: 10px; color: var(--text-dim); min-width: 38px; text-align: right; }
+
+.heatmap-wrap { overflow-x: auto; border: 1px solid var(--border); }
+.hm-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+.hm-table th { padding: 8px 12px; font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .1em; border-bottom: 1px solid var(--border); background: var(--bg3); font-weight: 400; }
+.hm-table td { padding: 6px 10px; border-bottom: 1px solid rgba(30,48,64,.4); }
+.hm-table tr:hover td { background: rgba(255,255,255,.03); }
+.hm-agent { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+.hm-icon { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); object-fit: cover; }
+.hm-cell { text-align: center; min-width: 80px; }
+.hm-val { display: inline-block; padding: 4px 8px; font-size: 10px; font-weight: 600; font-family: var(--display); border: 1px solid transparent; min-width: 62px; text-align: center; }
+.hm-wr-col { min-width: 72px; text-align: center; padding: 6px 8px; border-bottom: 1px solid rgba(30,48,64,.4); border-right: 1px solid rgba(30,48,64,.6); }
+.hm-wr-val { font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.hm-wr-bar { width: 100%; height: 2px; background: var(--border); margin-top: 4px; position: relative; }
+.hm-wr-bar-fill { height: 100%; position: absolute; top: 0; left: 0; }
+.hm-table th.hm-wr-th { min-width: 72px; text-align: center; border-right: 1px solid rgba(30,48,64,.6); font-size: 8px; letter-spacing: .14em; padding: 8px 8px; }
+
+.rankings-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.rank-col { border: 1px solid var(--border); background: var(--panel); }
+.rank-col-hdr { padding: 10px 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.rank-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid rgba(30,48,64,.4); }
+.rank-item:last-child { border-bottom: none; }
+.rank-pos { font-family: var(--mono); font-size: 9px; color: var(--text-dim); min-width: 18px; }
+.rank-agent { font-size: 12px; color: var(--text-bright); flex: 1; padding: 0 4px; }
+.rank-cpr { font-family: var(--display); font-size: 11px; }
+
+.meta-sidebar [data-tip]::after { left: calc(100% + 10px); bottom: auto; top: 50%; transform: translateY(-50%) translateX(4px); max-width: 260px; }
+.meta-sidebar [data-tip]:hover::after { transform: translateY(-50%) translateX(0); }
+.meta-sidebar [data-tip]::before { left: calc(100% + 4px); bottom: auto; top: 50%; transform: translateY(-50%); border: 5px solid transparent; border-right-color: var(--border-bright); border-top-color: transparent; }
+</style>
+
+<div class="meta-layout">
+  <div class="meta-sidebar">
+    <div class="panel">
+      <div class="panel-hdr">Weapon Phase</div>
+      <div class="panel-body">
+        <button class="pfbtn active" data-phase="Full Buy" data-tip="Rounds where teams spent&#10;≥3900 cr.">Full Buy</button>
+        <button class="pfbtn" data-phase="Force" data-tip="Rounds where teams spent&#10;~2000–3899 cr despite low economy.">Force Buy</button>
+        <button class="pfbtn" data-phase="Eco" data-tip="Rounds where teams spent&#10;&lt;2000 cr — saving for next round.">Eco</button>
+        <button class="pfbtn" data-phase="Pistol" data-tip="Round 1 and round 13 only.&#10;All players start with 800 cr.">Pistol</button>
+        <button class="pfbtn" data-phase="Round 2 (r1 loss)" data-tip="Round 2 following a round 1 loss.&#10;Team carries over pistol-round economy.">Round 2 (r1 loss)</button>
+        <button class="pfbtn" data-phase="Round 2 (r1 won)" data-tip="Round 2 following a round 1 win.&#10;Team has a stronger economic foundation.">Round 2 (r1 won)</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Map</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <select id="meta-sel-map" style="width:100%;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;">
+          <option value="all">All Maps</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Rank Filter</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <div class="rank-grid" id="meta-rank-grid">
+          <span class="rank-badge iron active" data-rank="iron">IRON</span>
+          <span class="rank-badge bronze active" data-rank="bronze">BRNZ</span>
+          <span class="rank-badge silver active" data-rank="silver">SLVR</span>
+          <span class="rank-badge gold active" data-rank="gold">GOLD</span>
+          <span class="rank-badge plat active" data-rank="plat">PLAT</span>
+          <span class="rank-badge diamond active" data-rank="diamond">DIAM</span>
+          <span class="rank-badge ascend active" data-rank="ascend">ASC</span>
+          <span class="rank-badge immortal active" data-rank="immortal">IMMO</span>
+          <span class="rank-badge radiant active" data-rank="radiant">RAD</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;">Applies to Weapon Buy Rates section only.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Act</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <div id="meta-act-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;">Populated from loaded match data.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meta-main">
+    <div>
+      <div class="section-title">Buy Phase Distribution</div>
+      <div class="phase-dist-row" id="meta-phase-dist"></div>
+    </div>
+    <div class="meta-two-col">
+      <div class="meta-panel">
+        <div class="section-title" style="margin-bottom:12px;">Weapon Meta</div>
+        <div id="meta-weapons"></div>
+      </div>
+      <div class="meta-panel">
+        <div class="section-title" style="margin-bottom:12px;">Shield Distribution</div>
+        <div id="meta-shields"></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Weapon Buy Rates by Agent</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:14px;">
+        % of rounds each agent bought a given weapon in the active phase. Filter by map and rank to answer questions like <em style="color:var(--cyan);">"who is more likely to buy a Vandal round 2?"</em>
+      </div>
+      <div id="meta-economy"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.metaPage = (function() {
+'use strict';
+var RD = window._RD;
+var agentsData = RD.agents, metaData = RD.meta;
+
+var metaPhase='Full Buy', hmSort='x', hmDir='desc', metaMap='all', econSortCol=null, econSortDir='desc';
+var metaRanks=new Set(['iron','bronze','silver','gold','plat','diamond','ascend','immortal','radiant']);
+var metaActs=new Set(); // populated from data; empty = all acts
+var SLOT_COL={c:'#00d4ff',q:'#ffe84d',e:'#39ff14',x:'#ff4655'};
+
+var SHIELD_STYLE={'Heavy Armor':{col:'#00d4ff',bg:'#003d4d',abbr:'H'},'Light Armor':{col:'#ffe84d',bg:'#1f1800',abbr:'L'},'Regen Shield':{col:'#a78bfa',bg:'#1a1030',abbr:'R'},'(none)':{col:'#6a8aa8',bg:'#0d1520',abbr:'N'}};
+var SHIELD_KEYS=['Heavy Armor','Light Armor','Regen Shield','(none)'];
+function shieldEntries(sh){sh=sh||{};var keys=SHIELD_KEYS.slice();Object.keys(sh).forEach(function(k){if(keys.indexOf(k)===-1)keys.push(k);});keys.sort(function(a,b){if(a==='(none)')return 1;if(b==='(none)')return -1;return (sh[b]?sh[b].buy_rate_pct:0)-(sh[a]?sh[a].buy_rate_pct:0);});return keys.map(function(n){var s=SHIELD_STYLE[n]||{col:'var(--text-dim)',bg:'#1a2d3d',abbr:n.charAt(0).toUpperCase()};return {name:n,pct:sh[n]?sh[n].buy_rate_pct:0,col:s.col,bg:s.bg,abbr:s.abbr};});}
+
+function barRow(n,p,mp,cs){var w=mp>0?(p/mp*100):0,f=cs||'background:var(--cyan-dim);border-right:2px solid var(--cyan);';return '<div class="bar-row"><div class="bar-name">'+n+'</div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;'+f+'"></div></div><div class="bar-pct">'+p.toFixed(1)+'%</div></div>';}
+function shieldBarsHTML(sh){var e=shieldEntries(sh),mx=Math.max.apply(null,e.map(function(x){return x.pct;}).concat([0.01]));return e.map(function(x){var w=mx>0?(x.pct/mx*100):0;return '<div class="bar-row"><div class="bar-name">'+x.name+'</div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+x.col+'55;border-right:2px solid '+x.col+';"></div></div><div class="bar-pct" style="color:'+x.col+'">'+x.pct.toFixed(1)+'%</div></div>';}).join('');}
+
+var SEC=new Set(['Classic','Shorty','Frenzy','Ghost','Sheriff','Bandit']);
+function normName(n){if(!n)return 'Classic';var x=n.trim().toLowerCase().replace(/\s+/g,' ');if(/^\(?none(\s*\/\s*classic)?\)?$/.test(x)||x==='(classic)'||x==='classic (default)')return 'Classic';return n.trim();}
+function cls(n){return SEC.has(normName(n))?'secondary':'primary';}
+function normObj(o){var out={};Object.entries(o||{}).forEach(function(e){var k=normName(e[0]);out[k]=out[k]?{buy_rate_pct:(out[k].buy_rate_pct||0)+(e[1].buy_rate_pct||0)}:e[1];});return out;}
+
+function renderPhaseDist(){
+  var pd=metaData.phase_distribution||{}, ac={Pistol:'var(--yellow)',Eco:'var(--red)',Force:'var(--cyan)','Full Buy':'var(--green)'};
+  var el=document.getElementById('meta-phase-dist'),html='';
+  ['Pistol','Eco','Force','Full Buy'].forEach(function(ph){var d=pd[ph]||{count:0,pct:0};html+='<div class="pd-card" style="--acc:'+ac[ph]+'"><div class="pd-name">'+ph+'</div><div class="pd-pct">'+d.pct.toFixed(1)+'<span style="font-size:13px;color:var(--text-dim)">%</span></div><div class="pd-sub">'+(d.count||0).toLocaleString()+' rounds</div></div>';});
+  el.innerHTML=html;
+}
+
+function renderMetaWeapons(){
+  var el=document.getElementById('meta-weapons'),data=(metaData.weapons_by_phase||{})[metaPhase]||{},entries=Object.entries(data).slice(0,10);
+  var max=entries.length?Math.max.apply(null,entries.map(function(e){return e[1].buy_rate_pct;})):1;
+  el.innerHTML='<div style="font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:.1em;margin-bottom:12px;">PHASE: '+metaPhase.toUpperCase()+'</div>'+(entries.length?entries.map(function(e){return barRow(e[0],e[1].buy_rate_pct,max,'');}).join(''):'<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data loaded.</div>');
+}
+
+function renderMetaShields(){
+  var el=document.getElementById('meta-shields'),s=metaData.shields_overall||{};
+  el.innerHTML=shieldBarsHTML(s)||'<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data.</div>';
+}
+
+function renderEconomy(){
+  var el=document.getElementById('meta-economy');
+  var useCtx=metaData.agent_weapon_context&&(metaMap!=='all'||metaRanks.size<9||metaActs.size>0);
+  var rows=[];
+  agentsData.forEach(function(a){
+    if(!a.loadout||!a.loadout.by_phase)return;
+    var wps={};
+    if(useCtx&&metaData.agent_weapon_context){var ctx=metaData.agent_weapon_context,mk=metaMap==='all'?'all':metaMap,mc=ctx[mk]||ctx['all']||{},rc={},rt={};Array.from(metaRanks).forEach(function(rank){var rk=mc[rank]||{},ac2=rk[a.name]||{},pc=ac2[metaPhase]||ac2[metaPhase.replace(' ','_')]||{};Object.entries(pc).forEach(function(pair){if(!rc[pair[0]]){rc[pair[0]]=0;rt[pair[0]]=0;}rc[pair[0]]++;rt[pair[0]]+=pair[1];});});Object.keys(rt).forEach(function(w){wps[w]=rt[w]/rc[w];});}
+    // Act filter: if metaActs has selections, intersect with agent's by_act slice
+    if(metaActs.size>0&&a.by_act){var actWps={},actCount={};Array.from(metaActs).forEach(function(act){var slice=a.by_act[act];if(!slice||!slice.weapons)return;Object.entries(slice.weapons).forEach(function(pair){var w=pair[0],p=pair[1].buy_rate_pct||0;actWps[w]=(actWps[w]||0)+p;actCount[w]=(actCount[w]||0)+1;});});Object.keys(actWps).forEach(function(w){wps[w]=actWps[w]/(actCount[w]||1);});}
+    if(!Object.keys(wps).length){var ph=a.loadout.by_phase[metaPhase]||a.loadout.by_phase['Full Buy'];if(ph&&ph.weapons)Object.entries(ph.weapons).forEach(function(pair){wps[pair[0]]=pair[1].buy_rate_pct;});}
+    if(Object.keys(wps).length)rows.push({name:a.name,role:a.role,icon:a.icon,weapons:wps,wr:a.win_rate!=null?a.win_rate:null});
+  });
+
+  if(!rows.length){el.innerHTML='<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:20px 0;">No weapon loadout data available for this phase.</div>';return;}
+
+  var wt={};rows.forEach(function(r){Object.entries(r.weapons).forEach(function(p){wt[p[0]]=(wt[p[0]]||0)+p[1];});});
+  var topW=Object.entries(wt).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){return e[0];});
+  if(!topW.length){el.innerHTML='<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:20px 0;">No weapon data for this phase.</div>';return;}
+
+  var colMax={};topW.forEach(function(w){colMax[w]=Math.max.apply(null,rows.map(function(r){return r.weapons[w]||0;}).concat([0.01]));});
+
+  var RO={'Duelist':0,'Initiator':1,'Controller':2,'Sentinel':3},RC={'Duelist':'#ff4655','Initiator':'#ffe84d','Controller':'#00d4ff','Sentinel':'#39ff14'};
+  rows.sort(function(a,b){var d=(RO[a.role]||9)-(RO[b.role]||9);if(d!==0)return d;var wa=a.wr!=null?a.wr:-Infinity,wb=b.wr!=null?b.wr:-Infinity;return wb-wa;});
+  if(econSortCol)rows.sort(function(a,b){var va=a.weapons[econSortCol]||0,vb=b.weapons[econSortCol]||0;return econSortDir==='desc'?vb-va:va-vb;});
+
+  var rl=Array.from(metaRanks),rn=rl.length===9?'ALL RANKS':(rl.length===0?'NO RANKS':rl.map(function(r){return r.toUpperCase();}).join(' · '));
+  var mn=metaMap==='all'?'ALL MAPS':metaMap.toUpperCase();
+  var an=metaActs.size===0?'ALL ACTS':Array.from(metaActs).join(' · ').toUpperCase();
+  var PC={'Full Buy':'#39ff14','Force':'#ffe84d','Eco':'#ff4655','Pistol':'#00d4ff','Round 2 (r1 loss)':'#ff8c42','Round 2 (r1 won)':'#a78bfa'}, pc=PC[metaPhase]||'var(--cyan)';
+
+  var ctx2='<div style="font-family:var(--mono);font-size:9px;color:#3a5a78;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><span style="color:'+pc+';border:1px solid '+pc+'44;padding:1px 7px;font-size:8px;letter-spacing:.1em;">'+metaPhase.toUpperCase()+'</span><span style="letter-spacing:.08em;">MAP: <span style="color:var(--cyan)">'+mn+'</span></span><span style="letter-spacing:.08em;">RANKS: <span style="color:var(--yellow)">'+rn+'</span></span><span style="letter-spacing:.08em;">ACT: <span style="color:#a78bfa">'+an+'</span></span>'+(useCtx?'':'<span style="color:#3a5a78;font-size:8px;">— using flat loadout data</span>')+'</div>';
+
+  function arr(w){if(econSortCol!==w)return '<span style="opacity:.2;font-size:8px;"> ⇅</span>';return econSortDir==='desc'?'<span style="font-size:8px;"> ▼</span>':'<span style="font-size:8px;"> ▲</span>';}
+
+  var html=ctx2+'<div style="overflow-x:auto;"><table class="hm-table" style="min-width:700px;"><thead><tr><th style="min-width:140px;font-size:9px;text-align:left;cursor:default;">Agent</th><th class="hm-wr-th" title="Agent overall win rate. Rows sorted high→low within each role group.">WIN RATE ↕</th>';
+  topW.forEach(function(w){var ia=econSortCol===w;html+='<th class="hm-cell" style="cursor:pointer;user-select:none;'+(ia?'color:var(--cyan);background:rgba(255,255,255,.04);':'color:var(--text-dim);')+'" data-econw="'+w+'">'+w+arr(w)+'</th>';});
+  html+='</tr></thead><tbody>';
+  var lr=null;
+  rows.forEach(function(r){
+    if(!econSortCol&&r.role!==lr){lr=r.role;var rc=RC[r.role]||'#6a8aa8';html+='<tr><td colspan="'+(topW.length+2)+'" style="background:linear-gradient(90deg,'+rc+'28 0%,'+rc+'0a 100%);padding:5px 10px 5px 14px;font-family:var(--mono);font-size:9px;color:'+rc+';letter-spacing:.18em;text-transform:uppercase;border-top:1px solid '+rc+'55;border-bottom:1px solid '+rc+'22;box-shadow:inset 3px 0 0 '+rc+';">'+r.role+'</td></tr>';}
+    html+='<tr><td><div class="hm-agent">'+(r.icon?'<img class="hm-icon" src="'+r.icon+'" onerror="this.style.display=\'none\'">':'')+'<span style="font-family:var(--mono);font-size:11px;">'+r.name+'</span></div></td>';
+    if(r.wr!=null){var wrV=r.wr,isHigh=wrV>=52,isMid=wrV>=49,wrCol=isHigh?'#00d4aa':isMid?'var(--text-bright)':'#ff4655',wrBarPct=Math.max(0,Math.min(100,(wrV-40)*5));html+='<td class="hm-wr-col"><div class="hm-wr-val" style="color:'+wrCol+';">'+wrV.toFixed(1)+'%</div><div class="hm-wr-bar"><div class="hm-wr-bar-fill" style="width:'+wrBarPct+'%;background:'+wrCol+';opacity:.7;"></div></div></td>';}
+    else{html+='<td class="hm-wr-col"><div class="hm-wr-val" style="color:#1e3040;">—</div></td>';}
+    topW.forEach(function(w){var p=r.weapons[w]||0,norm=colMax[w]>0?p/colMax[w]:0;if(p===0){html+='<td class="hm-cell"><div class="hm-val" style="color:#1e3040;border-color:#1e3040;background:transparent;">—</div></td>';return;}var a2=0.1+norm*0.78,tc=norm>0.55?'#fff':pc,bg=pc.startsWith('#')?pc+Math.round(a2*255).toString(16).padStart(2,'0'):'rgba(0,212,255,'+a2.toFixed(2)+')',brd=pc.startsWith('#')?pc+Math.round(a2*0.5*255).toString(16).padStart(2,'0'):'rgba(0,212,255,'+(a2*0.5).toFixed(2)+')';html+='<td class="hm-cell"><div class="hm-val" style="background:'+bg+';border-color:'+brd+';color:'+tc+'">'+p.toFixed(1)+'%</div></td>';});
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+
+  el.querySelectorAll('th[data-econw]').forEach(function(th){th.addEventListener('click',function(){var w=th.dataset.econw;if(econSortCol===w)econSortDir=econSortDir==='desc'?'asc':'desc';else{econSortCol=w;econSortDir='desc';}renderEconomy();});});
+}
+
+// Event listeners
+document.querySelectorAll('.pfbtn[data-phase]').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.pfbtn[data-phase]').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');metaPhase=btn.dataset.phase;econSortCol=null;renderMetaWeapons();renderEconomy();});});
+document.getElementById('meta-sel-map').addEventListener('change',function(e){metaMap=e.target.value;renderEconomy();});
+document.querySelectorAll('#meta-rank-grid .rank-badge').forEach(function(b){b.addEventListener('click',function(){var r=b.dataset.rank;if(metaRanks.has(r)){metaRanks.delete(r);b.classList.remove('active');}else{metaRanks.add(r);b.classList.add('active');}renderEconomy();});});
+
+// Init map dropdown
+(function(){var sel=document.getElementById('meta-sel-map'),maps=[];if(metaData.maps)maps=metaData.maps;else if(metaData.phase_distribution_by_map)maps=Object.keys(metaData.phase_distribution_by_map);else if(window.ROUND_STATS&&window.ROUND_STATS.maps)maps=window.ROUND_STATS.maps;maps.sort().forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});})();
+
+// Init act filter from data
+(function(){
+  var acts=[];
+  if(metaData.acts&&metaData.acts.length)acts=metaData.acts;
+  var container=document.getElementById('meta-act-list');
+  if(!acts.length){container.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">No act data in dataset.</div>';return;}
+  acts.forEach(function(act){
+    var btn=document.createElement('button');
+    btn.className='pfbtn active';
+    btn.dataset.act=act;
+    btn.textContent=act;
+    btn.style.cssText='font-size:11px;padding:7px 10px;margin-bottom:0;';
+    btn.addEventListener('click',function(){
+      if(metaActs.has(act)){metaActs.delete(act);btn.classList.remove('active');}
+      else{metaActs.add(act);btn.classList.add('active');}
+      econSortCol=null;renderEconomy();
+    });
+    container.appendChild(btn);
+  });
+  // Default: all acts selected = empty set means "all"; pre-populate none selected = show all
+  // (metaActs stays empty = all acts shown by default)
+})();
+
+renderPhaseDist();
+renderMetaWeapons();
+renderMetaShields();
+renderEconomy();
+
+return {};
+})();
+</script>

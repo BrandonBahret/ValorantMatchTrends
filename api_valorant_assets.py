@@ -190,7 +190,13 @@ class ValAssetApi:
         self.logger.log(uri, response.status_code)
         return response
 
-    def fetch(self, uri: str, expiry: int, force_update: bool = False) -> dict:
+    def fetch(
+        self,
+        uri: str,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> dict:
         """
         Fetch *uri*, serving from cache when the cached record is still fresh.
 
@@ -199,17 +205,25 @@ class ValAssetApi:
             expiry: Time-to-live in seconds for new cache entries.
                     Pass `math.inf` for entries that should never expire
                     (invalidated instead by version checks).
-            force_update: If True, re-fetch even when a valid cached entry exists.
+                    Defaults to `math.inf`.
+            force_update: If True, re-fetch and refresh the cache even when a
+                          valid (non-stale) cached entry already exists.
+            allow_stale: If True, return the cached data as-is even when the
+                         record has expired, without making a network request.
+                         Takes no effect when the key is not yet cached.
+                         Mutually exclusive with `force_update`; `force_update`
+                         takes precedence if both are True.
 
         Returns:
             The parsed JSON response as a dict.
         """
         if self.cache.has(uri):
             record = self.cache.get(uri)
-            if record.is_data_stale or force_update:
+            if force_update or (record.is_data_stale and not allow_stale):
                 data = self.uncached_fetch(uri).json()
                 self.cache.update(uri, data)
             else:
+                # Covers: fresh data, stale-but-allow_stale, and force_update=False
                 data = record.data
         else:
             data = self.uncached_fetch(uri).json()
@@ -221,51 +235,138 @@ class ValAssetApi:
     # Resource endpoints
     # ------------------------------------------------------------------
 
-    def get_maps(self) -> List["MapItem"]:
+    def get_maps(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> List["MapItem"]:
         """Return all playable maps."""
-        data = self.fetch(self.__base_uri + "/v1/maps", expiry=math.inf)
+        data = self.fetch(
+            self.__base_uri + "/v1/maps",
+            expiry=expiry,
+            force_update=force_update,
+            allow_stale=allow_stale,
+        )
         return [MapItem(e) for e in data["data"]]
 
-    def get_competitive_tiers(self) -> List["TierItem"]:
+    def get_competitive_tiers(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> List["TierItem"]:
         """
         Return competitive rank tiers for the current act.
 
         Only returns tiers that are actively used (filters out 'Unused' placeholders).
         """
-        data = self.fetch(self.__base_uri + "/v1/competitivetiers", expiry=math.inf)
+        data = self.fetch(
+            self.__base_uri + "/v1/competitivetiers",
+            expiry=expiry,
+            force_update=force_update,
+            allow_stale=allow_stale,
+        )
         # The API returns one entry per act; the last entry is the most recent.
         tiers = CompTierItem(data["data"][-1]).tiers
         return [t for t in tiers if "Unused" not in t.divisionName]
 
-    def get_agents(self) -> Dict[str, "AgentItem"]:
+    def get_agents(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> Dict[str, "AgentItem"]:
         """Return all playable agents, keyed by display name."""
         resource = self.__base_uri + build_url(
             "/v1/agents",
             required_params={},
             optional_params={"language": self.language, "isPlayableCharacter": True},
         )
-        data = self.fetch(resource, expiry=math.inf)
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
         return {agent["displayName"]: AgentItem(agent) for agent in data["data"]}
 
     def get_agent_by_name(self, name: str) -> "AgentItem":
         """Look up a single agent by display name. Uses the lazy-cached agent dict."""
         return self.agents[name]
 
-    def get_agent_by_uuid(self, uuid: str) -> "AgentItem":
-        """Look up a single agent by UUID. Uses the lazy-cached agent dict."""
-        return {a.uuid: a for a in self.agents.values()}[uuid]
+    def get_agent_by_uuid(
+        self,
+        uuid: str,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> "AgentItem":
+        """
+        Fetch a single agent directly from /v1/agents/{agentUuid}.
 
-    def get_gamemodes(self) -> Dict[str, "Gamemode"]:
+        Prefer this over scanning the full agent list when only one agent is needed.
+        """
+        resource = self.__base_uri + build_url(
+            "/v1/agents/{agentUuid}",
+            required_params={"agentUuid": uuid},
+            optional_params={"language": self.language},
+        )
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
+        return AgentItem(data["data"])
+
+    def get_weapons(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> Dict[str, "WeaponItem"]:
+        """Return all weapons, keyed by display name."""
+        resource = self.__base_uri + build_url(
+            "/v1/weapons",
+            required_params={},
+            optional_params={"language": self.language},
+        )
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
+        return {w["displayName"]: WeaponItem(w) for w in data["data"]}
+
+    def get_weapon_by_uuid(
+        self,
+        uuid: str,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> "WeaponItem":
+        """
+        Fetch a single weapon directly from /v1/weapons/{weaponUuid}.
+
+        Prefer this over scanning the full weapon list when only one weapon is needed.
+        """
+        resource = self.__base_uri + build_url(
+            "/v1/weapons/{weaponUuid}",
+            required_params={"weaponUuid": uuid},
+            optional_params={"language": self.language},
+        )
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
+        return WeaponItem(data["data"])
+
+    def get_gamemodes(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> Dict[str, "Gamemode"]:
         """Return all game modes, keyed by display name."""
         resource = self.__base_uri + build_url(
             "/v1/gamemodes",
             required_params={},
             optional_params={"language": self.language},
         )
-        data = self.fetch(resource, expiry=math.inf)
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
         return {e["displayName"]: Gamemode(e) for e in data["data"]}
 
-    def get_season_index_from_uuid(self, uuid: str) -> int:
+    def get_season_index_from_uuid(
+        self,
+        uuid: str,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> int:
         """
         Return the 1-based sequential index of the season identified by *uuid*.
 
@@ -277,7 +378,7 @@ class ValAssetApi:
             required_params={},
             optional_params={"language": "en-US"},
         )
-        data = self.fetch(resource, expiry=math.inf)
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
 
         seasons = [Season(e) for e in data["data"]]
         competitive_only = [
@@ -287,15 +388,55 @@ class ValAssetApi:
         index_by_uuid = {s.uuid: n + 1 for n, s in enumerate(competitive_only)}
         return index_by_uuid[uuid]
 
-    def get_seasons(self) -> Dict[str, "Season"]:
+    def get_seasons(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> Dict[str, "Season"]:
         """Return all seasons, keyed by UUID."""
         resource = self.__base_uri + build_url(
             "/v1/seasons",
             required_params={},
             optional_params={"language": self.language},
         )
-        data = self.fetch(resource, expiry=math.inf)
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
         return {e["uuid"]: Season(e) for e in data["data"]}
+
+    def get_gear(
+        self,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> Dict[str, "GearItem"]:
+        """Return all gear, keyed by display name."""
+        resource = self.__base_uri + build_url(
+            "/v1/gear",
+            required_params={},
+            optional_params={"language": self.language},
+        )
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
+        return {g["displayName"]: GearItem(g) for g in data["data"]}
+
+    def get_gear_by_uuid(
+        self,
+        uuid: str,
+        expiry: int = math.inf,
+        force_update: bool = False,
+        allow_stale: bool = False,
+    ) -> "GearItem":
+        """
+        Fetch a single gear item directly from /v1/gear/{gearUuid}.
+
+        Prefer this over scanning the full gear list when only one item is needed.
+        """
+        resource = self.__base_uri + build_url(
+            "/v1/gear/{gearUuid}",
+            required_params={"gearUuid": uuid},
+            optional_params={"language": self.language},
+        )
+        data = self.fetch(resource, expiry=expiry, force_update=force_update, allow_stale=allow_stale)
+        return GearItem(data["data"])
 
     def is_data_stale(self) -> bool:
         """
@@ -332,6 +473,16 @@ class ValAssetApi:
     def seasons(self) -> Dict[str, "Season"]:
         """All seasons, keyed by UUID."""
         return self.get_seasons()
+
+    @lazy_property
+    def weapons(self) -> Dict[str, "WeaponItem"]:
+        """All weapons, keyed by display name."""
+        return self.get_weapons()
+
+    @lazy_property
+    def gear(self) -> Dict[str, "GearItem"]:
+        """All gear, keyed by display name."""
+        return self.get_gear()
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +584,22 @@ class MapItem:
 
 
 @apimodel
+class AgentVoiceLineMedia:
+    """A single media entry for an agent voice line (Wwise + Wave audio references)."""
+    id: int
+    wwise: str
+    wave: str
+
+
+@apimodel
+class AgentVoiceLine:
+    """Voice line metadata for an agent ability, including duration bounds and media list."""
+    minDuration: float
+    maxDuration: float
+    mediaList: List[AgentVoiceLineMedia]
+
+
+@apimodel
 class AgentRole:
     """One of the four agent roles (Duelist, Initiator, Controller, Sentinel)."""
     uuid: str
@@ -448,29 +615,45 @@ class AgentRole:
 @apimodel
 class AgentAbilities:
     """A single ability belonging to an agent."""
-    slot: str          # e.g. 'Ability1', 'Ultimate'
-    displayName: str   # localized
-    description: str   # localized
+    slot: str                        # e.g. 'Ability1', 'Ultimate'
+    displayName: str                 # localized
+    description: str                 # localized
     displayIcon: str
+    voiceLine: AgentVoiceLine        # may be None for some abilities
 
     def __repr__(self) -> str:
         return f"<ability:{self.displayName}>"
 
 
 @apimodel
+class RecruitmentData:
+    """Recruitment / unlock metadata for an agent."""
+    counterId: str
+    milestoneId: str
+    milestoneThreshold: int
+    useLevelVpCostOverride: bool
+    levelVpCostOverride: int
+    startDate: str
+    endDate: str
+
+
+@apimodel
 class AgentItem:
     """Full metadata for a single playable agent."""
     uuid: str
-    displayName: str              # localized
-    description: str              # localized
+    displayName: str                      # localized
+    description: str                      # localized
     developerName: str
-    characterTags: List[str]      # localized
+    releaseDate: str
+    characterTags: List[str]              # localized
     displayIcon: str
     displayIconSmall: str
     bustPortrait: str
     fullPortrait: str
     fullPortraitV2: str
     killfeedPortrait: str
+    minimapPortrait: str
+    homeScreenPromoTileImage: str
     background: str
     backgroundGradientColors: List[str]
     assetPath: str
@@ -479,11 +662,7 @@ class AgentItem:
     isAvailableForTest: bool
     isBaseContent: bool
     role: AgentRole
-    milestoneThreshold: int
-    useLevelVpCostOverride: bool
-    levelVpCostOverride: int
-    startDate: str
-    endDate: str
+    recruitmentData: RecruitmentData
     abilities: List[AgentAbilities]
 
     def __repr__(self) -> str:
@@ -588,3 +767,188 @@ class Season:
 
     def __repr__(self) -> str:
         return f"<season:{self.displayName}>"
+
+
+@apimodel
+class GearDetail:
+    """A single key/value detail entry for a gear item (e.g. armour stats)."""
+    name: str   # localized
+    value: str  # localized
+
+
+@apimodel
+class GearGridPosition:
+    """Position of a gear item in the in-game shop grid."""
+    row: int
+    column: int
+
+
+@apimodel
+class GearShopData:
+    """Shop / economy metadata for a gear item."""
+    cost: int
+    category: str
+    shopOrderPriority: int
+    categoryText: str           # localized
+    gridPosition: GearGridPosition
+    canBeTrashed: bool
+    image: str
+    newImage: str
+    newImage2: str
+    assetPath: str
+
+
+@apimodel
+class GearItem:
+    """Full metadata for a single gear item (e.g. Light Shield, Heavy Shield)."""
+    uuid: str
+    displayName: str            # localized
+    description: str            # localized
+    descriptions: List[str]     # localized
+    details: List[GearDetail]
+    displayIcon: str
+    assetPath: str
+    shopData: GearShopData
+
+    def __repr__(self) -> str:
+        return f"<gear:{self.displayName}>"
+
+
+@apimodel
+class WeaponAdsStats:
+    """Aim-down-sights stats for a weapon."""
+    zoomMultiplier: float
+    fireRate: float
+    runSpeedMultiplier: float
+    burstCount: int
+    firstBulletAccuracy: float
+
+
+@apimodel
+class WeaponAltShotgunStats:
+    """Alternate fire stats for shotgun-type weapons."""
+    shotgunPelletCount: int
+    burstRate: float
+
+
+@apimodel
+class WeaponAirBurstStats:
+    """Air-burst stats for weapons with an air-burst alt-fire mode."""
+    shotgunPelletCount: int
+    burstDistance: float
+
+
+@apimodel
+class WeaponDamageRange:
+    """Damage values for a specific distance band."""
+    rangeStartMeters: float
+    rangeEndMeters: float
+    headDamage: float
+    bodyDamage: float
+    legDamage: float
+
+
+@apimodel
+class WeaponGridPosition:
+    """Position of a weapon in the in-game shop grid."""
+    row: int
+    column: int
+
+
+@apimodel
+class WeaponShopData:
+    """Shop / economy metadata for a weapon."""
+    cost: int
+    category: str
+    shopOrderPriority: int
+    categoryText: str           # localized
+    gridPosition: WeaponGridPosition
+    canBeTrashed: bool
+    image: str
+    newImage: str
+    newImage2: str
+    assetPath: str
+
+
+@apimodel
+class WeaponStats:
+    """Full ballistic and handling stats for a weapon."""
+    fireRate: float
+    magazineSize: int
+    runSpeedMultiplier: float
+    equipTimeSeconds: float
+    reloadTimeSeconds: float
+    firstBulletAccuracy: float
+    shotgunPelletCount: int
+    wallPenetration: str        # e.g. 'EWallPenetrationDisplayType::Low'
+    feature: str
+    fireMode: str
+    altFireType: str
+    adsStats: WeaponAdsStats
+    altShotgunStats: WeaponAltShotgunStats
+    airBurstStats: WeaponAirBurstStats
+    damageRanges: List[WeaponDamageRange]
+
+
+@apimodel
+class WeaponSkinChroma:
+    """A single chroma (color variant) for a weapon skin."""
+    uuid: str
+    displayName: str            # localized
+    displayIcon: str
+    fullRender: str
+    swatch: str
+    streamedVideo: str
+    assetPath: str
+
+    def __repr__(self) -> str:
+        return f"<chroma:{self.displayName}>"
+
+
+@apimodel
+class WeaponSkinLevel:
+    """A single unlock level for a weapon skin."""
+    uuid: str
+    displayName: str            # localized
+    levelItem: str              # e.g. 'EEquippableSkinLevelItem::VFX'
+    displayIcon: str
+    streamedVideo: str
+    assetPath: str
+
+    def __repr__(self) -> str:
+        return f"<level:{self.displayName}>"
+
+
+@apimodel
+class WeaponSkin:
+    """A full skin for a weapon, including all chromas and levels."""
+    uuid: str
+    displayName: str            # localized
+    themeUuid: str
+    contentTierUuid: str
+    displayIcon: str
+    wallpaper: str
+    assetPath: str
+    chromas: List[WeaponSkinChroma]
+    levels: List[WeaponSkinLevel]
+
+    def __repr__(self) -> str:
+        return f"<skin:{self.displayName}>"
+
+
+@apimodel
+class WeaponItem:
+    """Full metadata for a single weapon, including stats, shop data, and all skins."""
+    uuid: str
+    displayName: str            # localized
+    category: str               # e.g. 'EEquippableCategory::Heavy'
+    defaultSkinUuid: str
+    displayIcon: str
+    killStreamIcon: str
+    assetPath: str
+    weaponStats: WeaponStats
+    shopData: WeaponShopData
+    skins: List[WeaponSkin]
+
+    def __repr__(self) -> str:
+        return f"<weapon:{self.displayName}>"

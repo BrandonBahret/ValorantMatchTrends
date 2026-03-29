@@ -1,0 +1,3175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VAL STATS</title>
+  <script src="report_data.js"></script>
+  <script src="round_stats.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* index-specific overrides: util page is narrower, account for sticky header */
+    #page-util .util-app {
+      min-height: calc(100vh - 65px);
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px 0 24px;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      background: #080c11;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 52px;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--red) 0%, var(--red) 180px, var(--border) 260px, transparent 100%);
+      opacity: .7;
+    }
+
+    /* ── LOGO MARK — crosshair/data grid icon ─── */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-right: 28px;
+      border-right: 1px solid var(--border);
+      margin-right: 0;
+    }
+
+    .logo-mark {
+      width: 30px;
+      height: 30px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .logo-mark svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 4px #ff465566);
+    }
+
+    .logo-text {
+      font-family: var(--body);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--text-bright);
+      line-height: 1;
+    }
+
+    .logo-sub {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--red);
+      letter-spacing: .14em;
+      margin-top: 4px;
+      text-transform: uppercase;
+      opacity: .85;
+    }
+
+    /* ── NAV TABS ─── */
+    .nav-tabs {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      margin-left: 0;
+      height: 100%;
+    }
+
+    .nav-tab {
+      padding: 0 20px;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .12em;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      transition: color .15s, background .15s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      position: relative;
+      white-space: nowrap;
+      border-left: 1px solid transparent;
+      border-right: 1px solid transparent;
+    }
+
+    .nav-tab::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: transparent;
+      transition: background .15s;
+    }
+
+    .nav-tab:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .nav-tab.active {
+      color: var(--cyan);
+      background: rgba(0, 212, 255, .05);
+      border-left-color: var(--border);
+      border-right-color: var(--border);
+    }
+
+    .nav-tab.active::before {
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    .nav-tab-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      opacity: .4;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+
+    .nav-tab.active .nav-tab-dot {
+      background: var(--cyan);
+      opacity: 1;
+      box-shadow: 0 0 5px var(--cyan);
+    }
+
+    .nav-tab:hover .nav-tab-dot {
+      opacity: .7;
+    }
+
+    .header-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+    }
+
+    .header-meta span {
+      color: var(--cyan);
+    }
+
+    #no-data-banner {
+      padding: 40px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--red);
+      border: 1px dashed var(--red-dim);
+      margin: 40px;
+      line-height: 2;
+    }
+
+    #no-data-banner code {
+      color: var(--cyan);
+      background: var(--bg3);
+      padding: 2px 8px;
+    }
+
+    /* ── PAGES ──────────────────────────────────────────────── */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* ── CONTROLS BAR ───────────────────────────────────────── */
+    .controls {
+      background: #0a0e16;
+      border-bottom: 1px solid var(--border-bright);
+      padding: 10px 24px;
+      display: flex;
+      gap: 14px;
+      flex-wrap: nowrap;
+      align-items: center;
+      position: sticky;
+      top: 52px;
+      z-index: 40;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .55);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-group label {
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    select,
+    input[type=number] {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-bright);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 1px;
+      outline: none;
+      transition: border-color .2s;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    select:focus,
+    input[type=number]:focus {
+      border-color: var(--cyan);
+    }
+
+    select option {
+      background: #101720;
+    }
+
+    .role-filters {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+    }
+
+    .role-btn {
+      padding: 7px 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 10px;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+      text-align: center;
+      letter-spacing: .04em;
+    }
+
+    .role-btn.active {
+      border-color: var(--role-col, var(--cyan));
+      color: var(--role-col, var(--cyan));
+      background: color-mix(in srgb, var(--role-col, var(--cyan)) 10%, transparent);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    input[type=checkbox] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      accent-color: var(--cyan);
+    }
+
+    /* ── META PAGE ──────────────────────────────────────────── */
+    .meta-layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      min-height: calc(100vh - 65px);
+    }
+
+    .meta-sidebar {
+      border-right: 1px solid var(--border);
+      padding: var(--sidebar-padding);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--panel);
+      position: sticky;
+      height: 100%;
+      max-height: 100vh;
+      top: 52px;
+    }
+
+    .meta-main {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .panel-hdr {
+      padding: var(--panel-hdr-padding);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: var(--panel-hdr-size);
+      /* standardized: was 10px */
+      letter-spacing: .12em;
+      color: var(--cyan);
+      text-transform: uppercase;
+    }
+
+    .panel-hdr::before {
+      content: '// ';
+      color: var(--text-dim);
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .section-title {
+      font-family: var(--display);
+      font-size: 10px;
+      letter-spacing: .18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .pfbtn {
+      display: block;
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .12s;
+      text-align: left;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+
+    .pfbtn.active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      background: var(--cyan-dim);
+    }
+
+    .sbtn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+    }
+
+    .sbtn {
+      padding: 7px 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .12s;
+      text-align: center;
+      letter-spacing: .03em;
+    }
+
+    .sbtn.active {
+      border-color: var(--yellow);
+      color: var(--yellow);
+      background: #1a1500;
+    }
+
+    .phase-dist-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .pd-card {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 14px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pd-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--acc, var(--cyan));
+    }
+
+    .pd-name {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .pd-pct {
+      font-family: var(--display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--acc, var(--cyan));
+      line-height: 1;
+    }
+
+    .pd-sub {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 5px;
+    }
+
+    .meta-two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .meta-panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 18px;
+    }
+
+    /* Heatmap */
+    .heatmap-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+
+    .hm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .hm-table th {
+      padding: 8px 12px;
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+      font-weight: 400;
+    }
+
+    .hm-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(30, 48, 64, .4);
+    }
+
+    .hm-table tr:hover td {
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .hm-agent {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 130px;
+    }
+
+    .hm-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      object-fit: cover;
+    }
+
+    .hm-cell {
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .hm-val {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--display);
+      border: 1px solid transparent;
+      min-width: 62px;
+      text-align: center;
+    }
+
+    /* Win rate column in heatmap */
+    .hm-wr-col {
+      min-width: 72px;
+      text-align: center;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(30, 48, 64, .4);
+      border-right: 1px solid rgba(30, 48, 64, .6);
+    }
+
+    .hm-wr-val {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .hm-wr-bar {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      margin-top: 4px;
+      position: relative;
+    }
+
+    .hm-wr-bar-fill {
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .hm-table th.hm-wr-th {
+      min-width: 72px;
+      text-align: center;
+      border-right: 1px solid rgba(30, 48, 64, .6);
+      font-size: 8px;
+      letter-spacing: .14em;
+      padding: 8px 8px;
+    }
+
+    /* Rankings */
+    .rankings-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .rank-col {
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    /* ── TOOLTIPS ───────────────────────────────────────────── */
+    [data-tip] {
+      position: relative;
+    }
+
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0d1520;
+      border: 1px solid var(--border-bright);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 10px;
+      line-height: 1.6;
+      padding: 8px 11px;
+      white-space: pre-line;
+      width: max-content;
+      max-width: 240px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s .5s, transform .15s .5s;
+      transform: translateX(-50%) translateY(4px);
+      z-index: 9999;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .6);
+      text-align: left;
+    }
+
+    [data-tip]::before {
+      content: '';
+      position: absolute;
+      bottom: calc(100% + 3px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--border-bright);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s .5s;
+      z-index: 9999;
+    }
+
+    [data-tip]:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    [data-tip]:hover::before {
+      opacity: 1;
+    }
+
+    /* Role filter buttons — tooltip above, anchored left so it doesn't clip off-screen */
+    .role-filters [data-tip] {
+      isolation: isolate;
+    }
+
+    .role-filters [data-tip]::after {
+      left: 0;
+      transform: translateX(0) translateY(4px);
+      z-index: 9999;
+    }
+
+    .role-filters [data-tip]:hover::after {
+      transform: translateX(0) translateY(0);
+    }
+
+    .role-filters [data-tip]::before {
+      left: 14px;
+      transform: translateX(0);
+    }
+
+    /* Sidebar buttons — flip tooltip to the right */
+    .meta-sidebar [data-tip]::after,
+    .agents-sidebar [data-tip]::after {
+      left: calc(100% + 10px);
+      bottom: auto;
+      top: 50%;
+      transform: translateY(-50%) translateX(4px);
+      max-width: 260px;
+    }
+
+    .meta-sidebar [data-tip]:hover::after,
+    .agents-sidebar [data-tip]:hover::after {
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .meta-sidebar [data-tip]::before,
+    .agents-sidebar [data-tip]::before {
+      left: calc(100% + 4px);
+      bottom: auto;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 5px solid transparent;
+      border-right-color: var(--border-bright);
+      border-top-color: transparent;
+    }
+
+    /* Loadout-by-Phase tabs — tooltip above, centered */
+    .phase-tabs [data-tip]::after {
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      bottom: calc(100% + 8px);
+      z-index: 9999;
+    }
+
+    .phase-tabs [data-tip]:hover::after {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .phase-tabs [data-tip]::before {
+      left: 50%;
+      bottom: calc(100% + 3px);
+      border-right-color: transparent;
+      border-top-color: var(--border-bright);
+    }
+
+    .rank-col-hdr {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      border-bottom: 1px solid rgba(30, 48, 64, .4);
+    }
+
+    .rank-item:last-child {
+      border-bottom: none;
+    }
+
+    .rank-pos {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      min-width: 18px;
+    }
+
+    .rank-agent {
+      font-size: 12px;
+      color: var(--text-bright);
+      flex: 1;
+      padding: 0 4px;
+    }
+
+    .rank-cpr {
+      font-family: var(--display);
+      font-size: 11px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div style="display:flex;align-items:stretch;">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 32 32" fill="#ff4655" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M19.8,26.1h-0.2c-2.4,0-4.8,0-7.2,0c-0.3,0-0.5-0.1-0.6-0.3c-2.5-3.2-5.1-6.3-7.6-9.5C4.1,16.1,4,16,4,15.8   c0-3.1,0-6.1,0-9.2c0-0.1,0-0.2,0.1-0.2h0.1c5.2,6.5,10.4,13,15.5,19.5c0,0,0,0.1,0.1,0.1L19.8,26.1L19.8,26.1z" />
+            <path
+              d="M27.8,16.3c-0.7,0.9-1.5,1.8-2.2,2.8c-0.2,0.2-0.4,0.3-0.6,0.3c-2.4,0-4.8,0-7.1,0c0,0-0.1,0-0.1,0c-0.1,0-0.2-0.1-0.1-0.2   c0,0,0-0.1,0.1-0.1c2.4-3,4.7-5.9,7.1-8.9c1-1.2,2-2.5,2.9-3.7c0-0.1,0.1-0.1,0.2-0.1c0,0,0.1,0,0.1,0c0,0.1,0,0.1,0,0.2   c0,3,0,6.1,0,9.1C28,16,27.9,16.2,27.8,16.3L27.8,16.3z" />
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">VAL STATS</div>
+          <div class="logo-sub">VALORANT · META TRACKER</div>
+        </div>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab active" onclick="showPage('agents',this)"><span class="nav-tab-dot"></span>AGENT
+          STATS</button>
+        <!-- <button class="nav-tab" onclick="showPage('meta',this)"><span class="nav-tab-dot"></span>META ANALYSIS</button> -->
+        <button class="nav-tab" onclick="showPage('util',this)"><span class="nav-tab-dot"></span>UTIL
+          CALCULATOR</button>
+        <button class="nav-tab" onclick="showPage('matchhistory',this)"><span class="nav-tab-dot"></span>MATCH
+          HISTORY</button>
+      </nav>
+    </div>
+    <div class="header-meta" id="header-meta">loading...</div>
+    <div id="util-header-right"
+      style="display:none;align-items:center;gap:24px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">
+      <span id="util-data-source-badge"><span class="util-status-dot"></span>load round_stats.js to use real data</span>
+      <button id="util-btn-stats-report-hdr"
+        onclick="document.getElementById('util-iframe').contentWindow.postMessage({type:'open-stats-report'},'*')"
+        style="display:none;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;
+             background:var(--bg3);border:1px solid var(--border-bright);color:var(--cyan);
+             padding:6px 14px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--cyan)'"
+        onmouseout="this.style.borderColor='var(--border-bright)'">
+        ▤ DATA REPORT
+      </button>
+      <span id="util-current-act-label" style="color:var(--yellow)">—</span>
+    </div>
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════
+     PAGE 1: AGENT STATS
+═══════════════════════════════════════════════════════════════ -->
+  <div id="page-agents" class="page active">
+    <style>
+      /* ── AGENT STATS LAYOUT ─────────────────────────────────── */
+      .agents-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) 1fr;
+        min-height: calc(100vh - 52px);
+      }
+
+      .agents-sidebar {
+        border-right: 1px solid var(--border);
+        padding: var(--sidebar-padding);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: var(--panel);
+        position: sticky;
+        top: 52px;
+        height: calc(100vh - 52px);
+        overflow-y: auto;
+      }
+
+      .agents-main {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .agents-sidebar .role-filters {
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .agents-sidebar .role-btn {
+        width: 100%;
+        text-align: left;
+        padding: 7px 10px;
+      }
+
+      /* ── TABLE ──────────────────────────────────────────────── */
+      .stats-table {
+        overflow-x: auto;
+        overflow-y: auto;
+        height: calc(100vh - 52px);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      thead tr {
+        background: #0d1520;
+        border-bottom: 1px solid var(--border);
+      }
+
+      th {
+        padding: 11px 14px;
+        text-align: left;
+        font-family: var(--mono);
+        font-weight: 400;
+        font-size: 10px;
+        letter-spacing: .1em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        white-space: nowrap;
+        user-select: none;
+      }
+
+      th.sortable {
+        cursor: pointer;
+      }
+
+      th.sortable:hover {
+        color: var(--text-bright);
+      }
+
+      th.sorted {
+        color: var(--cyan);
+      }
+
+      th.sorted.desc::after {
+        content: ' ▼';
+        font-size: 8px;
+      }
+
+      th.sorted.asc::after {
+        content: ' ▲';
+        font-size: 8px;
+      }
+
+      tbody tr.agent-row {
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: background .12s;
+      }
+
+      tbody tr.agent-row:hover {
+        background: rgba(0, 212, 255, .04);
+      }
+
+      tbody tr.agent-row.expanded {
+        background: rgba(0, 212, 255, .07);
+        border-bottom-color: var(--cyan-dim);
+      }
+
+      td {
+        padding: 11px 14px;
+        color: var(--text);
+        vertical-align: middle;
+      }
+
+      .agent-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .agent-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid var(--red);
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .agent-name {
+        font-weight: 700;
+        font-size: 1.05em;
+        color: var(--text-bright);
+      }
+
+      .agent-role {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--red);
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        margin-top: 2px;
+      }
+
+      .expand-caret {
+        display: inline-block;
+        font-size: 9px;
+        color: var(--text-dim);
+        margin-left: 5px;
+        transition: transform .2s;
+        vertical-align: middle;
+      }
+
+      tr.expanded .expand-caret {
+        transform: rotate(90deg);
+      }
+
+      .stat-num {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .pct {
+        color: #00d4aa;
+      }
+
+      .kda-val {
+        color: var(--yellow);
+      }
+
+      .role-header-row td {
+        background: linear-gradient(90deg, rgba(255, 70, 85, .18) 0%, rgba(255, 70, 85, .06) 100%);
+        padding: 7px 14px 7px 18px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--red);
+        text-transform: uppercase;
+        letter-spacing: .18em;
+        border-top: 1px solid rgba(255, 70, 85, .45);
+        border-bottom: 1px solid rgba(255, 70, 85, .2);
+        box-shadow: inset 3px 0 0 var(--red);
+      }
+
+      .util-sort-btn:hover {
+        color: var(--text-bright) !important;
+        border-color: var(--text-dim) !important;
+      }
+
+      .util-sort-btn.active-inv {
+        color: var(--cyan) !important;
+        border-color: var(--cyan) !important;
+        background: var(--cyan-dim) !important;
+      }
+
+      .util-sort-btn.active-ult {
+        color: var(--red) !important;
+        border-color: var(--red) !important;
+        background: rgba(255, 70, 85, .08) !important;
+      }
+
+      .util-mini {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 96px;
+      }
+
+      .util-mini-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .um-lbl {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .um-lbl img {
+        width: 14px;
+        height: 14px;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.75;
+      }
+
+      .um-lbl-txt {
+        font-family: var(--mono);
+        font-size: 9px;
+        text-align: center;
+        line-height: 14px;
+      }
+
+      .um-track {
+        flex: 1;
+        height: 3px;
+        background: var(--border);
+        position: relative;
+      }
+
+      .um-fill {
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .um-val {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        width: 28px;
+        text-align: right;
+      }
+
+      /* Clickable CPR rows in accordion */
+      .cpr-row {
+        cursor: pointer;
+        border-radius: 2px;
+        transition: background .12s;
+        padding: 2px 4px;
+        margin: 0 -4px;
+      }
+
+      .cpr-row:hover {
+        background: rgba(255, 255, 255, .04);
+      }
+
+      .cpr-row.util-selected {
+        background: rgba(0, 212, 255, .08);
+        outline: 1px solid rgba(0, 212, 255, .25);
+      }
+
+      /* Ability detail panel */
+      .util-detail-panel {
+        margin-top: 14px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        padding: 12px 14px;
+        display: none;
+        animation: fadeSlideIn .15s ease;
+      }
+
+      .util-detail-panel.visible {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      @keyframes fadeSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .udp-icon {
+        width: 38px;
+        height: 38px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        background: var(--panel);
+      }
+
+      .udp-icon img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+      }
+
+      .udp-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .udp-name {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-bright);
+        margin-bottom: 3px;
+      }
+
+      .udp-slot-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 1px 5px;
+        border: 1px solid;
+        margin-right: 5px;
+        letter-spacing: .06em;
+      }
+
+      .udp-cpr {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-top: 6px;
+      }
+
+      .udp-cpr strong {
+        color: var(--text-bright);
+      }
+
+      .udp-desc {
+        font-size: 11px;
+        color: var(--text);
+        line-height: 1.55;
+        margin: 5px 0 4px;
+        opacity: .85;
+      }
+
+      .shield-mini {
+        min-width: 88px;
+      }
+
+      .sm-bar {
+        display: flex;
+        height: 5px;
+        width: 100%;
+        margin-bottom: 4px;
+        overflow: hidden;
+      }
+
+      .sm-labels {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        display: flex;
+        gap: 7px;
+      }
+
+      tr.accordion-row {
+        display: none;
+      }
+
+      tr.accordion-row.open {
+        display: table-row;
+      }
+
+      .accordion-row td {
+        padding: 0;
+        background: var(--bg3);
+        border-bottom: 2px solid var(--border);
+      }
+
+      .acc-content {
+        padding: 18px 20px;
+      }
+
+      .acc-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .acc-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+      }
+
+      .acc-panel {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        padding: 16px;
+      }
+
+      .acc-title {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: .12em;
+        color: var(--cyan);
+        margin-bottom: 14px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+      }
+
+      .acc-title::before {
+        content: '// ';
+        color: var(--text-dim);
+        flex-shrink: 0;
+      }
+
+      .cpr-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 9px;
+      }
+
+      .cpr-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text);
+        min-width: 170px;
+      }
+
+      .cpr-slot {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        padding: 1px 4px;
+        margin-right: 5px;
+        flex-shrink: 0;
+      }
+
+      .cpr-track {
+        flex: 1;
+        height: 7px;
+        background: var(--border);
+        position: relative;
+        min-width: 40px;
+      }
+
+      .cpr-fill {
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        transition: width .3s;
+      }
+
+      .cpr-val {
+        font-family: var(--display);
+        font-size: 11px;
+        min-width: 42px;
+        text-align: right;
+      }
+
+      .phase-tabs {
+        display: flex;
+        gap: 3px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .phase-tab {
+        padding: 4px 10px;
+        font-family: var(--mono);
+        font-size: 10px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        color: var(--text-dim);
+        background: var(--bg3);
+        transition: all .12s;
+        letter-spacing: .04em;
+      }
+
+      .phase-tab.active {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: var(--cyan-dim);
+      }
+
+      .phase-pane {
+        display: none;
+      }
+
+      .phase-pane.active {
+        display: block;
+      }
+
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .bar-name {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text);
+        min-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        flex: 1;
+        height: 5px;
+        background: var(--border);
+        position: relative;
+        min-width: 40px;
+      }
+
+      .bar-fill {
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: var(--cyan-dim);
+        border-right: 2px solid var(--cyan);
+        transition: width .3s;
+      }
+
+      .bar-pct {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        min-width: 38px;
+        text-align: right;
+      }
+
+      .spend-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .spend-card {
+        border: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: center;
+      }
+
+      .spend-val {
+        font-family: var(--display);
+        font-size: 14px;
+        color: var(--cyan);
+      }
+
+      .spend-lbl {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-top: 3px;
+      }
+
+      .acc-note {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-top: 10px;
+        line-height: 1.8;
+      }
+
+      .role-filters {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .role-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px;
+      }
+
+      .role-btn {
+        padding: 7px 6px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all .15s;
+        white-space: nowrap;
+        text-align: center;
+        letter-spacing: .04em;
+      }
+
+      .role-btn.active {
+        border-color: var(--role-col, var(--cyan));
+        color: var(--role-col, var(--cyan));
+        background: color-mix(in srgb, var(--role-col, var(--cyan)) 10%, transparent);
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+      }
+
+      input[type=checkbox] {
+        width: 15px;
+        height: 15px;
+        cursor: pointer;
+        accent-color: var(--cyan);
+      }
+
+      .agents-sidebar [data-tip]::after {
+        left: calc(100% + 10px);
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%) translateX(4px);
+        max-width: 260px;
+      }
+
+      .agents-sidebar [data-tip]:hover::after {
+        transform: translateY(-50%) translateX(0);
+      }
+
+      .agents-sidebar [data-tip]::before {
+        left: calc(100% + 4px);
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 5px solid transparent;
+        border-right-color: var(--border-bright);
+        border-top-color: transparent;
+      }
+
+      .phase-tabs [data-tip]::after {
+        left: 50%;
+        transform: translateX(-50%) translateY(4px);
+        bottom: calc(100% + 8px);
+        z-index: 9999;
+      }
+
+      .phase-tabs [data-tip]:hover::after {
+        transform: translateX(-50%) translateY(0);
+      }
+
+      .phase-tabs [data-tip]::before {
+        left: 50%;
+        bottom: calc(100% + 3px);
+        border-right-color: transparent;
+        border-top-color: var(--border-bright);
+      }
+    </style>
+
+    <div class="agents-layout">
+      <div class="agents-sidebar">
+        <div class="panel">
+          <div class="panel-hdr">Search</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <div style="position:relative;">
+              <span
+                style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--text-dim);pointer-events:none;">⌕</span>
+              <input type="text" id="agentSearch" placeholder="Agent name…"
+                style="width:100%;box-sizing:border-box;padding:7px 10px 7px 26px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .2s;border-radius:1px;"
+                oninput="agentsPage.renderTable()" onfocus="this.style.borderColor='var(--cyan)'"
+                onblur="this.style.borderColor='var(--border)'">
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Role</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <div id="roleFilters" class="role-grid"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Config</div>
+          <div class="panel-body" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+            <div>
+              <div
+                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
+                Min Matches</div>
+              <input type="number" id="minMatches" min="0" value="10" step="1" style="width:100%;box-sizing:border-box;"
+                data-tip="Hide agents seen in fewer&#10;than this many matches.&#10;Reduces small-sample noise.">
+            </div>
+            <div>
+              <div
+                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
+                Sort By</div>
+              <select id="sortBy" style="width:100%;box-sizing:border-box;">
+                <option value="team_percentage">Team Pick Rate</option>
+                <option value="matches_seen_percentage">Matches Seen %</option>
+                <option value="win_rate">Win Rate</option>
+                <option value="non_mirror_win_rate">Non-Mirror WR</option>
+                <option value="kda">KDA</option>
+                <option value="util_score">Util Investment</option>
+                <option value="ult_cpr">Ult Usage Rate</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+            <div>
+              <div
+                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
+                Order</div>
+              <select id="sortOrder" style="width:100%;box-sizing:border-box;">
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+              <div class="checkbox-group"><input type="checkbox" id="groupByRole"><label for="groupByRole"
+                  data-tip="Organise rows into labelled&#10;role sections.">Group by role</label></div>
+              <div class="checkbox-group"><input type="checkbox" id="showUtil" checked><label for="showUtil"
+                  data-tip="Show the Util CPR column.">Show util CPR</label></div>
+
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Map</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <select id="agents-sel-map"
+              style="width:100%;box-sizing:border-box;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;"
+              onchange="agentsPage.renderTable()">
+              <option value="all">All Maps</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Rank Filter</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <div class="rank-grid" id="agents-rank-grid"></div>
+            <div id="agents-rank-note"
+              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;display:none;">
+              No rank data in dataset.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="agents-main">
+        <div class="stats-table" id="agents-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="min-width:180px;">Agent</th>
+                <th class="sortable" data-sort="teams"
+                  data-tip="Number of distinct teams&#10;that ran this agent at&#10;least once.">Teams</th>
+                <th class="sortable" data-sort="team_percentage"
+                  data-tip="% of teams that picked&#10;this agent ÷ total teams.">Pick Rate</th>
+                <th class="sortable" data-sort="matches_seen_percentage"
+                  data-tip="% of matches where this&#10;agent appeared on either&#10;team's roster.">Matches %</th>
+                <th class="sortable" data-sort="win_rate"
+                  data-tip="Rounds won ÷ total rounds&#10;played across all matches.">Win Rate</th>
+                <th class="sortable" data-sort="non_mirror_win_rate"
+                  data-tip="Win rate excluding rounds&#10;where enemy ran same agent.">Non-Mirror WR</th>
+                <th class="sortable" data-sort="kda" data-tip="(Kills + Assists) ÷ Deaths.&#10;Averaged per player.">KDA
+                </th>
+                <th id="col-util" style="min-width:130px;"
+                  data-tip="Casts-per-round for each&#10;ability slot (C/Q/E/X).">
+                  <span style="display:flex;align-items:center;gap:6px;">Util CPR
+                    <span style="display:flex;gap:3px;">
+                      <span class="util-sort-btn" data-sort="util_score"
+                        style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;"
+                        data-tip="Util Investment: C+Q+E+X CPR sum.">INV</span>
+                      <span class="util-sort-btn" data-sort="ult_cpr"
+                        style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;"
+                        data-tip="Ult Usage Rate: X-slot CPR.">ULT</span>
+                    </span>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="agentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window._RD = window._RD || window.REPORT_DATA;
+      window.agentsPage = (function () {
+        'use strict';
+        var RD = window._RD;
+        var agentsData = RD.agents, reprData = RD.repr, metaData = RD.meta, summary = RD.summary;
+
+        // ── MATHEMATICALLY CORRECT STAT AGGREGATION ─────────────────────────────────
+        // Avoids the average-of-averages fallacy by recomputing rates from raw counts.
+        // win_rate        = Σwins / Σpicks
+        // kda             = Σ(kills+assists) / Σdeaths
+        // non_mirror_wr   = Σnon_mirror_wins / Σnon_mirror_picks
+        // team_percentage = Σteams / Σtotal_teams
+        // matches_seen_%  = Σmatches_seen / summary.matches * 100
+        //                   (matches where enemy ran this agent ÷ 51 total matches, one team per match)
+        // utility (CPR)   = simple mean across leaves (already a per-round rate)
+        // by_phase        = count-weighted merge: Σcount / Σsample_rounds per weapon/shield
+
+        // Fuse by_phase dicts from multiple leaf nodes.
+        // Invariant: buy_rate_pct = count / sample_rounds * 100 -- so sum counts & sample_rounds.
+        function fuseByPhase(nodes) {
+          var acc = {};
+          nodes.forEach(function (n) {
+            if (!n || !n.by_phase) return;
+            Object.keys(n.by_phase).forEach(function (ph) {
+              var src = n.by_phase[ph];
+              if (!acc[ph]) acc[ph] = { weapons: {}, shields: {}, sample_rounds: 0 };
+              var dst = acc[ph];
+              dst.sample_rounds += (src.sample_rounds || 0);
+              Object.keys(src.weapons || {}).forEach(function (w) {
+                dst.weapons[w] = (dst.weapons[w] || 0) + (src.weapons[w].count || 0);
+              });
+              Object.keys(src.shields || {}).forEach(function (s) {
+                dst.shields[s] = (dst.shields[s] || 0) + (src.shields[s].count || 0);
+              });
+            });
+          });
+          // Recompute buy_rate_pct from accumulated counts
+          var out = {};
+          Object.keys(acc).forEach(function (ph) {
+            var d = acc[ph], sr = d.sample_rounds;
+            out[ph] = { sample_rounds: sr, weapons: {}, shields: {} };
+            Object.keys(d.weapons).forEach(function (w) {
+              out[ph].weapons[w] = { count: d.weapons[w], buy_rate_pct: sr > 0 ? +(d.weapons[w] / sr * 100).toFixed(2) : 0 };
+            });
+            Object.keys(d.shields).forEach(function (s) {
+              out[ph].shields[s] = { count: d.shields[s], buy_rate_pct: sr > 0 ? +(d.shields[s] / sr * 100).toFixed(2) : 0 };
+            });
+          });
+          return out;
+        }
+
+        function fuseStats(nodes) {
+          var valid = nodes.filter(Boolean);
+          if (!valid.length) return null;
+          if (valid.length === 1) return Object.assign({}, valid[0]);
+
+          var sumWins = 0, sumMatches = 0, sumKills = 0, sumAssists = 0, sumDeaths = 0;
+          var sumNMWins = 0, sumNMPicks = 0, sumPicks = 0, sumTeams = 0, sumTotalTeams = 0;
+          var sumTotalMatches = 0, sumTotalPlayers = 0;
+          var utilSum = { c: 0, q: 0, e: 0, x: 0 }, utilCount = 0;
+
+          valid.forEach(function (n) {
+            sumWins += (n.wins || 0);
+            sumMatches += (n.matches_seen || 0);
+            sumKills += (n.kills || 0);
+            sumAssists += (n.assists || 0);
+            sumDeaths += (n.deaths || 0);
+            sumNMWins += (n.non_mirror_wins || 0);
+            sumNMPicks += (n.non_mirror_picks || 0);
+            sumPicks += (n.picks || 0);
+            sumTeams += (n.teams || 0);
+            sumTotalTeams += (n.total_teams || 0);
+            sumTotalMatches += (n.total_matches || 0);
+            sumTotalPlayers += (n.total_players_in_slice || 0);
+            if (n.utility) {
+              ['c', 'q', 'e', 'x'].forEach(function (s) { utilSum[s] += (n.utility[s] || 0); });
+              utilCount++;
+            }
+          });
+
+          var out = {};
+          out.picks = sumPicks;
+          out.teams = sumTeams;
+          out.non_mirror_picks = sumNMPicks;
+          out.matches_seen = sumMatches;
+          out.wins = sumWins;
+          out.non_mirror_wins = sumNMWins;
+          out.kills = sumKills;
+          out.assists = sumAssists;
+          out.deaths = sumDeaths;
+          out.total_teams = sumTotalTeams;
+          out.total_matches = sumTotalMatches;
+          out.total_players_in_slice = sumTotalPlayers;
+
+          out.win_rate = sumPicks > 0 ? (sumWins / sumPicks * 100) : null;
+          out.non_mirror_win_rate = sumNMPicks > 0 ? (sumNMWins / sumNMPicks * 100) : null;
+          out.kda = sumDeaths > 0 ? ((sumKills + sumAssists) / sumDeaths) : null;
+          out.team_percentage = sumTotalTeams > 0 ? (sumPicks / sumTotalTeams * 100) : null;
+          // matches_seen_% = matches where enemy ran this agent ÷ total matches (51, one team per match)
+          var _totalMatches = (summary && summary.matches) || 1;
+          out.matches_seen_percentage = sumMatches / _totalMatches * 100;
+
+          out.pick_rate = sumTotalPlayers > 0 ? (sumPicks / sumTotalPlayers * 100) : null;
+
+          // Utility CPR: simple mean (per-round rate; safe to average linearly)
+          if (utilCount > 0) {
+            out.utility = {};
+            ['c', 'q', 'e', 'x'].forEach(function (s) { out.utility[s] = utilSum[s] / utilCount; });
+          } else {
+            out.utility = null;
+          }
+
+          // by_phase: count-weighted merge so buy_rate_pct = Σcount / Σsample_rounds
+          out.by_phase = fuseByPhase(valid);
+
+          return out;
+        }
+
+        // Resolve stat node(s) for an agent given current map+rank filter, fuse with
+        // count-weighted math. No .overall node expected in this data shape.
+        function resolveAgentStats(agentName, mapFilter, selRanks, isAllRanks) {
+          var tree = metaData.agent_tree;
+          if (!tree || !tree[agentName]) return null;
+          var ag = tree[agentName];
+          var hasMap = mapFilter && mapFilter !== 'all';
+          var hasRank = selRanks && selRanks.length > 0 && !isAllRanks;
+          var nodes = [];
+
+          if (hasMap && hasRank) {
+            var mapNode = ag.by_map && ag.by_map[mapFilter];
+            if (!mapNode) return null;
+            selRanks.forEach(function (r) { nodes.push(mapNode.by_rank && mapNode.by_rank[r] || null); });
+          } else if (hasMap) {
+            var mapNode = ag.by_map && ag.by_map[mapFilter];
+            if (!mapNode) return null;
+            Object.values(mapNode.by_rank || {}).forEach(function (n) { nodes.push(n); });
+          } else if (hasRank) {
+            Object.values(ag.by_map || {}).forEach(function (mn) {
+              selRanks.forEach(function (r) { nodes.push(mn.by_rank && mn.by_rank[r] || null); });
+            });
+          } else {
+            // All maps + all ranks: every leaf
+            Object.values(ag.by_map || {}).forEach(function (mn) {
+              Object.values(mn.by_rank || {}).forEach(function (n) { nodes.push(n); });
+            });
+          }
+
+          return fuseStats(nodes);
+        }
+        // ─────────────────────────────────────────────────────────────────────────────
+
+        // util_score and ult_cpr are computed post-merge in renderTable, where
+        // a.utility comes from the resolved stat node (agent_tree overall/by_rank).
+
+        var avgRounds = (summary && (summary.avg_rounds_per_match || summary.avg_match_length || summary.avg_rounds))
+          || (metaData && (metaData.avg_rounds_per_match || metaData.avg_match_length || metaData.avg_rounds))
+          || 24;
+
+        var sortKey = 'team_percentage', sortDir = 'desc', groupRole = false, showUtil = true;
+        var activeRoles = new Set(), expandedSet = new Set();
+        var agentsRanks = new Set();    // active/toggled ranks — populated by init IIFE
+        var agentsRanksAll = new Set(); // all ranks present in data (never modified by clicks)
+        var agentsMap = 'all';
+        var SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' }, CPR_MAX = 2.0;
+
+        function wrStyle(v) {
+          if (v >= 55) return 'color:#00d4aa;text-shadow:0 0 8px #00d4aa44;';
+          if (v >= 50.5) return 'color:#00d4aa;'; if (v >= 45) return 'color:var(--text-bright);';
+          return 'color:var(--red);';
+        }
+
+        var ROLE_COL = { 'Duelist': '#ff4655', 'Initiator': '#ffe84d', 'Controller': '#00d4ff', 'Sentinel': '#39ff14' };
+
+        function initRoleFilters() {
+          var ORDER = ['Duelist', 'Initiator', 'Controller', 'Sentinel'];
+          var roles = Array.from(new Set(agentsData.map(function (a) { return a.role; }))).sort(function (a, b) {
+            var ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
+            if (ia === -1 && ib === -1) return a.localeCompare(b); if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib;
+          });
+          var el = document.getElementById('roleFilters');
+          roles.forEach(function (role) {
+            activeRoles.add(role);
+            var btn = document.createElement('button'); btn.className = 'role-btn active'; btn.textContent = role; btn.dataset.role = role;
+            btn.style.setProperty('--role-col', ROLE_COL[role] || 'var(--cyan)');
+            btn.onclick = function () { if (activeRoles.has(role)) { activeRoles.delete(role); btn.classList.remove('active'); } else { activeRoles.add(role); btn.classList.add('active'); } renderTable(); };
+            el.appendChild(btn);
+          });
+        }
+
+        function utilMiniHTML(a) {
+          // utility lives on the stat node (a.utility); ability icons live in a.loadout
+          var u = a && a.utility;
+          var loadout = a && a.loadout;
+          if (!u) return '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">—</span>';
+          var ai = loadout && loadout.ability_icons || {}, html = '<div class="util-mini">';
+          ['c', 'q', 'e', 'x'].forEach(function (s) {
+            var pct = Math.min(100, (u[s] / CPR_MAX) * 100), isUlt = s === 'x', dimmed = sortKey === 'ult_cpr' && !isUlt, col = SLOT_COL[s];
+            var iconUrl = ai[s] || '';
+            var hue = isUlt ? '320' : '160';
+            var lblInner = iconUrl
+              ? '<img src="' + iconUrl + '" alt="' + s.toUpperCase() + '" style="width:14px;height:14px;object-fit:contain;filter:brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(' + hue + 'deg);opacity:' + (dimmed ? '0.3' : '0.82') + ';display:block;" onerror="this.style.display=&#39;none&#39;">'
+              : '<span style="font-family:var(--mono);font-size:9px;color:' + col + ';">' + s.toUpperCase() + '</span>';
+            html += '<div class="util-mini-row"><span class="um-lbl">' + lblInner + '</span><div class="um-track"><div class="um-fill" style="width:' + pct + '%;background:' + col + ';opacity:' + (dimmed ? '0.3' : isUlt ? '0.55' : '0.75') + ';"></div></div><span class="um-val">' + u[s].toFixed(3) + '</span></div>';
+          });
+          return html + '</div>';
+        }
+
+        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#6a8aa8', bg: '#0d1520', abbr: 'N' } };
+        var SHIELD_KEYS = ['Heavy Armor', 'Light Armor', 'Regen Shield', '(none)'];
+        function shieldEntries(sh) { sh = sh || {}; var keys = SHIELD_KEYS.slice(); Object.keys(sh).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); keys.sort(function (a, b) { if (a === '(none)') return 1; if (b === '(none)') return -1; return (sh[b] ? sh[b].buy_rate_pct : 0) - (sh[a] ? sh[a].buy_rate_pct : 0); }); return keys.map(function (n) { var s = SHIELD_STYLE[n] || { col: 'var(--text-dim)', bg: '#1a2d3d', abbr: n.charAt(0).toUpperCase() }; return { name: n, pct: sh[n] ? sh[n].buy_rate_pct : 0, col: s.col, bg: s.bg, abbr: s.abbr }; }); }
+        function shieldBarsHTML(sh) { var e = shieldEntries(sh), mx = Math.max.apply(null, e.map(function (x) { return x.pct; }).concat([0.01])); return e.map(function (x) { var w = mx > 0 ? (x.pct / mx * 100) : 0; return '<div class="bar-row"><div class="bar-name">' + x.name + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;background:' + x.col + '55;border-right:2px solid ' + x.col + ';"></div></div><div class="bar-pct" style="color:' + x.col + '">' + x.pct.toFixed(1) + '%</div></div>'; }).join(''); }
+
+        var PRI = new Set(['Vandal', 'Phantom', 'Guardian', 'Bulldog', 'Spectre', 'Stinger', 'Operator', 'Outlaw', 'Marshal', 'Judge', 'Bucky', 'Ares', 'Odin']);
+        var SEC = new Set(['Classic', 'Shorty', 'Frenzy', 'Ghost', 'Sheriff', 'Bandit']), SEC_KEYS = ['Classic', 'Ghost', 'Sheriff', 'Frenzy', 'Shorty', 'Bandit'];
+        function normName(n) { if (!n) return 'Classic'; var x = n.trim().toLowerCase().replace(/\s+/g, ' '); if (/^\(?none(\s*\/\s*classic)?\)?$/.test(x) || x === '(classic)' || x === 'classic (default)') return 'Classic'; return n.trim(); }
+        function cls(n) { return SEC.has(normName(n)) ? 'secondary' : 'primary'; }
+        function normObj(o) { var out = {}; Object.entries(o || {}).forEach(function (e) { var k = normName(e[0]); out[k] = out[k] ? { buy_rate_pct: (out[k].buy_rate_pct || 0) + (e[1].buy_rate_pct || 0) } : e[1]; }); return out; }
+        function splitW(o) { o = normObj(o); var p = [], sm = {}; Object.entries(o).forEach(function (e) { if (cls(e[0]) === 'secondary') sm[e[0]] = e[1]; else p.push(e); }); var s = SEC_KEYS.map(function (n) { return [n, sm[n] || { buy_rate_pct: 0 }]; }); Object.entries(o).forEach(function (e) { if (cls(e[0]) === 'secondary' && SEC_KEYS.indexOf(e[0]) === -1) s.push(e); }); s.sort(function (a, b) { return (b[1].buy_rate_pct || 0) - (a[1].buy_rate_pct || 0); }); return { primary: p, secondary: s }; }
+        function splitWRaw(o) { o = normObj(o); var p = [], s = []; Object.entries(o).forEach(function (e) { if (cls(e[0]) === 'secondary') s.push(e); else p.push(e); }); s.sort(function (a, b) { return (b[1].buy_rate_pct || 0) - (a[1].buy_rate_pct || 0); }); return { primary: p, secondary: s }; }
+        function barRow(n, p, mp, cs) { var w = mp > 0 ? (p / mp * 100) : 0, f = cs || 'background:var(--cyan-dim);border-right:2px solid var(--cyan);'; return '<div class="bar-row"><div class="bar-name">' + n + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;' + f + '"></div></div><div class="bar-pct">' + p.toFixed(1) + '%</div></div>'; }
+        function wepBars(e, ac) { if (!e.length) return '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data</span>'; var rt = e.reduce(function (s, x) { return s + (x[1].buy_rate_pct || 0); }, 0), t = rt > 0 ? rt : 1; var nm = e.map(function (x) { return [x[0], (x[1].buy_rate_pct || 0) / t * 100]; }); var mp = Math.max.apply(null, nm.map(function (x) { return x[1]; }).concat([0.01])); return nm.map(function (x) { return '<div style="' + (x[1] === 0 ? 'opacity:.35;' : '') + '">' + barRow(x[0], x[1], mp, ac || '') + '</div>'; }).join(''); }
+        function phWepBars(e, ac) { if (!e.length) return '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data</span>'; var mp = Math.max.apply(null, e.map(function (x) { return x[1].buy_rate_pct || 0; }).concat([0.01])); return e.map(function (x) { var p = x[1].buy_rate_pct || 0, w = mp > 0 ? (p / mp * 100) : 0, f = ac || 'background:var(--cyan-dim);border-right:2px solid var(--cyan);'; return '<div class="bar-row"><div class="bar-name">' + x[0] + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;' + f + '"></div></div><div class="bar-pct">' + p.toFixed(1) + '%</div></div>'; }).join(''); }
+        function infoIcon(tip) { return '<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--text-dim);font-family:var(--mono);font-size:8px;color:var(--text-dim);cursor:default;margin-left:6px;flex-shrink:0;vertical-align:middle;line-height:1;position:relative;" data-tip="' + tip + '">i</span>'; }
+
+        function phasePane(pd) {
+          pd = pd || {}; var sp = splitWRaw(pd.weapons || {}), se = sp.secondary.length > 0 ? sp.secondary : [['Classic', { buy_rate_pct: 100 }]];
+          var lbl = function (l, c) { return '<div style="font-family:var(--mono);font-size:9px;color:' + c + ';letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;margin-top:10px;opacity:.8;">' + l + '</div>'; };
+          return lbl('Primary', 'var(--cyan)') + '<div>' + phWepBars(sp.primary.slice(0, 5), 'background:rgba(0,212,255,.18);border-right:2px solid var(--cyan);') + '</div>' + lbl('Secondary', 'var(--yellow)') + '<div>' + phWepBars(se.slice(0, 5), 'background:rgba(255,232,77,.15);border-right:2px solid var(--yellow);') + '</div>' + '<div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Shields</div>' + shieldBarsHTML(pd.shields || {});
+        }
+
+        function getFilteredUtility(agentName) {
+          // Resolve per-agent utility CPR from precomputed slices based on current
+          // map + rank filter state, mirroring the same lookup used for agent stats.
+          // Falls back through: by_map_rank → by_rank → by_map → overall → null.
+          var uba = metaData && metaData.precompute && metaData.precompute.utility_by_agent;
+          if (!uba) return null;
+
+          var hasMap = agentsMap && agentsMap !== 'all';
+          var selRanks = Array.from(agentsRanks);
+          var isAllRanks = agentsRanksAll.size > 0 && agentsRanksAll.size === agentsRanks.size;
+          var hasRankFilter = selRanks.length > 0 && !isAllRanks;
+
+          // Helper: merge CPR dicts from multiple rank slices, weighted by matches_seen
+          // when available, otherwise simple average.
+          function mergeUtilSlices(slices) {
+            var result = { c: 0, q: 0, e: 0, x: 0 }, n = 0;
+            slices.forEach(function (s) { if (s) { ['c', 'q', 'e', 'x'].forEach(function (k) { result[k] += s[k] || 0; }); n++; } });
+            if (!n) return null;
+            ['c', 'q', 'e', 'x'].forEach(function (k) { result[k] /= n; });
+            return result;
+          }
+
+          if (hasMap && hasRankFilter && uba.by_map_rank) {
+            var parts = selRanks.map(function (r) {
+              var bmr = uba.by_map_rank[agentsMap + '|' + r];
+              return bmr && bmr[agentName] || null;
+            }).filter(Boolean);
+            if (parts.length) return mergeUtilSlices(parts);
+          }
+          if (hasRankFilter && uba.by_rank) {
+            var parts = selRanks.map(function (r) {
+              var br = uba.by_rank[r];
+              return br && br[agentName] || null;
+            }).filter(Boolean);
+            if (parts.length) return mergeUtilSlices(parts);
+          }
+          if (hasMap && uba.by_map) {
+            var bm = uba.by_map[agentsMap];
+            if (bm && bm[agentName]) return bm[agentName];
+          }
+          if (uba.overall && uba.overall[agentName]) return uba.overall[agentName];
+          return null;
+        }
+
+        function buildAccordion(a) {
+          if (!a.loadout) return '<div style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim);">No loadout data for ' + a.name + '.</div>';
+          var L = a.loadout, an = L.ability_names || {}, ai = L.ability_icons || {}, ad = L.ability_descriptions || {}, uid = 'acc' + a.name.replace(/[^a-z0-9]/gi, '');
+
+          // Utility is already correctly fused from raw leaves via fuseStats/resolveAgentStats.
+          var u = a.utility;
+          var utilIsFiltered = false;
+
+          if (!u) return '<div style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim);">No utility data for ' + a.name + '.</div>';
+          var umax = Math.max(u.c, u.q, u.e, u.x, 0.01), utilH = '';
+          var detailPanelId = 'udp-' + uid;
+
+          // Filter context label shown above the CPR bars when a filter is active.
+          var filterCtx = '';
+          if (utilIsFiltered) {
+            var ctxParts = [];
+            var isAllRanks = agentsRanksAll.size > 0 && agentsRanksAll.size === agentsRanks.size;
+            if (agentsMap && agentsMap !== 'all') ctxParts.push(agentsMap);
+            if (!isAllRanks && agentsRanks.size > 0) ctxParts.push(Array.from(agentsRanks).map(function (r) { return r.toUpperCase(); }).join('+'));
+            if (ctxParts.length)
+              filterCtx = '<div style="font-family:var(--mono);font-size:9px;color:var(--cyan);opacity:.7;margin-bottom:8px;letter-spacing:.08em;">FILTERED: ' + ctxParts.join(' / ') + '</div>';
+          }
+
+          ['c', 'q', 'e', 'x'].forEach(function (s) {
+            var p = Math.min(100, (u[s] / Math.max(umax, 2.0)) * 100);
+            var col = SLOT_COL[s];
+            var iconUrl = ai[s] || '';
+            var safeIcon = iconUrl.replace(/"/g, '&quot;');
+            var safeName = (an[s] || s.toUpperCase()).replace(/"/g, '&quot;');
+            var iconHtml = iconUrl
+              ? '<img src="' + iconUrl + '" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75;margin-right:2px;vertical-align:middle;" onerror="this.style.display=&#39;none&#39;">'
+              : '';
+            var safeDesc = (ad[s] || '').replace(/"/g, '&quot;');
+            var approxCasts = Math.round(u[s] * avgRounds);
+            utilH += '<div class="cpr-row"'
+              + ' data-slot="' + s + '"'
+              + ' data-panel="' + detailPanelId + '"'
+              + ' data-name="' + safeName + '"'
+              + ' data-icon="' + safeIcon + '"'
+              + ' data-cpr="' + u[s].toFixed(4) + '"'
+              + ' data-approx="' + approxCasts + '"'
+              + ' data-col="' + col + '"'
+              + ' data-desc="' + safeDesc + '"'
+              + ' onclick="agentsPage.showUtilDetail(this)">'
+              + '<div class="cpr-label"><span class="cpr-slot" style="color:' + col + '">' + iconHtml + s.toUpperCase() + '</span>' + (an[s] || s.toUpperCase()) + '</div>'
+              + '<div class="cpr-track"><div class="cpr-fill" style="width:' + p + '%;background:' + col + ';opacity:.8;"></div></div>'
+              + '<div class="cpr-val" style="color:' + col + '">' + u[s].toFixed(3) + '<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:5px;font-weight:400;">≈' + approxCasts + '</span></div>'
+              + '</div>';
+          });
+          utilH = filterCtx + utilH;
+          utilH += '<div id="' + detailPanelId + '" class="util-detail-panel"></div>';
+          var noteScope = utilIsFiltered ? 'current filter selection' : 'all matches';
+          utilH += '<div class="acc-note">Casts-per-round averaged across ' + noteScope + '.<br>CPR &gt; 1.0 = multi-charge ability used more than once per round.<br><span style="color:var(--text-dim);opacity:.7;">≈N = rounded casts per match (CPR × ' + Math.round(avgRounds) + ' avg rounds).</span><br><span style="color:var(--cyan);opacity:.7;">Click a row above for details.</span></div>';
+
+          var phases = ['Pistol', 'Eco', 'Force', 'Full Buy', '2nd Round'];
+          var PTIPS = { 'Pistol': 'Round 1 &amp; 13 only.\nAll players start with 800 cr\n— no rifle purchases possible.', 'Eco': 'Teams spent &lt;2000 cr.\nSaving economy for next round;\nexpect pistols &amp; light buys.', 'Force': 'Teams spent ~2000–3899 cr\ndespite low economy.\nForced buys to stay competitive.', 'Full Buy': 'Teams spent ≥3900 cr.\nFull rifles + armor; reflects\ntrue meta weapon choices.', '2nd Round': 'Round after a pistol round win.\nBonus credits apply; shows\nhow teams transition off pistol.' };
+          var tH = '<div class="phase-tabs">', pH = '';
+          phases.forEach(function (ph, i) { var pk = ph.replace(/ /g, '_'), tip = PTIPS[ph] || ''; tH += '<button class="phase-tab' + (i === 0 ? ' active' : '') + '" onclick="agentsPage.switchPhase(\'' + uid + '\',\'' + pk + '\',this)"' + (tip ? ' data-tip="' + tip + '"' : '') + '>' + ph + '</button>'; pH += '<div class="phase-pane' + (i === 0 ? ' active' : '') + '" id="' + uid + '-' + pk + '">' + phasePane(a.by_phase && a.by_phase[ph]) + '</div>'; });
+          tH += '</div>';
+
+          // Aggregate weapons and shields across ALL phases from by_phase (new data shape).
+          var _bp = a.by_phase || {};
+          var _allWeps = {}, _allShields = {}, _allSR = 0;
+          Object.values(_bp).forEach(function (ph) {
+            _allSR += (ph.sample_rounds || 0);
+            Object.keys(ph.weapons || {}).forEach(function (w) { _allWeps[w] = (_allWeps[w] || 0) + (ph.weapons[w].count || 0); });
+            Object.keys(ph.shields || {}).forEach(function (s) { _allShields[s] = (_allShields[s] || 0) + (ph.shields[s].count || 0); });
+          });
+          var _wepObj = {}, _shObj = {};
+          Object.keys(_allWeps).forEach(function (w) { _wepObj[w] = { buy_rate_pct: _allSR > 0 ? _allWeps[w] / _allSR * 100 : 0 }; });
+          Object.keys(_allShields).forEach(function (s) { _shObj[s] = { buy_rate_pct: _allSR > 0 ? _allShields[s] / _allSR * 100 : 0 }; });
+          var ws = splitW(_wepObj), sh2 = _shObj;
+          return '<div class="acc-content"><div class="acc-grid-2"><div class="acc-panel"><div class="acc-title">Utility Usage</div>' + utilH + '</div><div class="acc-panel"><div class="acc-title">Loadout by Phase' + infoIcon('% of rounds in that buy phase\nthis agent carried each weapon.\nDoes not sum to 100%.') + '</div>' + tH + pH + '</div></div><div class="acc-grid-3" style="margin-top:14px;"><div class="acc-panel"><div class="acc-title" style="color:var(--cyan);">Primary Weapons' + infoIcon('Share of all primary-slot rounds.\nBars sum to 100%.') + '</div>' + wepBars(ws.primary.slice(0, 8), 'background:rgba(0,212,255,.18);border-right:2px solid var(--cyan);') + '</div><div class="acc-panel"><div class="acc-title" style="color:var(--yellow);">Secondary Weapons' + infoIcon('Share of all sidearm rounds.\nBars sum to 100%.') + '</div>' + wepBars(ws.secondary, 'background:rgba(255,232,77,.15);border-right:2px solid var(--yellow);') + '</div><div class="acc-panel"><div class="acc-title">Shield Breakdown</div>' + shieldBarsHTML(sh2) + '</div></div></div>';
+        }
+
+        function switchPhase(uid, pk, btn) { var c = btn.closest('.acc-panel'); c.querySelectorAll('.phase-pane').forEach(function (p) { p.classList.remove('active'); }); c.querySelectorAll('.phase-tab').forEach(function (b) { b.classList.remove('active'); }); var pane = document.getElementById(uid + '-' + pk); if (pane) pane.classList.add('active'); btn.classList.add('active'); }
+
+        function toggleAccordion(agent) {
+          var ar = document.querySelector('tr.agent-row[data-name="' + agent.name + '"]');
+          var id = 'acc-row-' + agent.name.replace(/[^a-z0-9]/gi, ''), ex = document.getElementById(id);
+          if (ex) { var o = ex.classList.contains('open'); ex.classList.toggle('open', !o); if (ar) ar.classList.toggle('expanded', !o); if (o) expandedSet.delete(agent.name); else expandedSet.add(agent.name); return; }
+          var row = document.createElement('tr'); row.className = 'accordion-row open'; row.id = id;
+          var cell = document.createElement('td'); cell.colSpan = 8; cell.innerHTML = buildAccordion(agent); row.appendChild(cell);
+          if (ar) { ar.classList.add('expanded'); ar.after(row); } expandedSet.add(agent.name);
+        }
+
+        function createRow(a) {
+          var row = document.createElement('tr'); row.className = 'agent-row'; row.dataset.name = a.name; if (expandedSet.has(a.name)) row.classList.add('expanded');
+          var nmWR = a.non_mirror_win_rate !== null ? '<span style="font-family:var(--mono);font-size:13px;font-weight:600;' + wrStyle(a.non_mirror_win_rate) + '">' + a.non_mirror_win_rate.toFixed(1) + '%</span><span style="font-size:.8em;opacity:.45;font-family:var(--mono);margin-left:4px;">(' + a.non_mirror_picks + ')</span>' : '<span style="opacity:.35;">—</span>';
+          row.innerHTML = '<td><div class="agent-cell"><img src="' + a.icon + '" alt="" class="agent-icon" onerror="this.style.display=\'none\'"><div><div class="agent-name">' + a.name + '<span class="expand-caret">▶</span></div><div class="agent-role">' + a.role + '</div></div></div></td><td class="stat-num">' + a.teams + '</td><td class="stat-num pct">' + a.team_percentage.toFixed(1) + '%</td><td class="stat-num"><span class="pct">' + a.matches_seen_percentage.toFixed(1) + '%</span> <span style="opacity:.4;font-size:.85em;">(' + a.matches_seen + ')</span></td><td><span style="font-family:var(--mono);font-size:13px;font-weight:600;' + wrStyle(a.win_rate) + '">' + a.win_rate.toFixed(1) + '%</span></td><td>' + nmWR + '</td><td class="stat-num kda-val">' + a.kda.toFixed(2) + '</td><td>' + (showUtil ? utilMiniHTML(a) : '') + '</td>';
+          row.onclick = function () { toggleAccordion(a); }; return row;
+        }
+
+        function reinsertAccordion(a, tbody) {
+          if (!expandedSet.has(a.name)) return;
+          var id = 'acc-row-' + a.name.replace(/[^a-z0-9]/gi, '');
+          var row = document.createElement('tr'); row.className = 'accordion-row open'; row.id = id;
+          var cell = document.createElement('td'); cell.colSpan = 8; cell.innerHTML = buildAccordion(a); row.appendChild(cell); tbody.appendChild(row);
+        }
+
+        function renderTable() {
+          var tbody = document.getElementById('agentTableBody'), minM = Number(document.getElementById('minMatches').value);
+          var cu = document.getElementById('col-util'); if (cu) cu.style.display = showUtil ? '' : 'none';
+          document.querySelectorAll('th.sortable').forEach(function (th) { th.classList.remove('sorted', 'asc', 'desc'); if (th.dataset.sort === sortKey) th.classList.add('sorted', sortDir); });
+          document.querySelectorAll('.util-sort-btn').forEach(function (btn) { btn.classList.remove('active-inv', 'active-ult'); if (btn.dataset.sort === sortKey) btn.classList.add(sortKey === 'util_score' ? 'active-inv' : 'active-ult'); });
+
+          var sq = (document.getElementById('agentSearch').value || '').toLowerCase().trim();
+          agentsMap = document.getElementById('agents-sel-map').value;
+          var hasRank = document.getElementById('agents-rank-grid').children.length > 0;
+
+          // Initial filter: roles, search query, and base matches threshold.
+          // Note: matches_seen on agent objects comes from the top-level overall node.
+          // After resolveAgentStats() the fused value may differ, so we re-filter below.
+          var list = agentsData.filter(function (a) { return activeRoles.has(a.role) && (!sq || a.name.toLowerCase().indexOf(sq) !== -1); });
+
+          // ── Single-pass map + rank fusion via waterfall tree ─────────────────────
+          var selRanks = Array.from(agentsRanks);
+          var isAllRanks = agentsRanksAll.size > 0 && agentsRanksAll.size === agentsRanks.size;
+          var anyFilter = agentsMap !== 'all' || (agentsRanks.size > 0 && !isAllRanks);
+
+          if (anyFilter) {
+            list = list.map(function (a) {
+              var s = resolveAgentStats(a.name, agentsMap, selRanks, isAllRanks);
+              if (!s) return null;
+              return Object.assign({}, a, s, {
+                _filterOverlay: true,
+                name: a.name, role: a.role, icon: a.icon, loadout: a.loadout
+              });
+            }).filter(Boolean);
+          } else {
+            // No filter active: fuse all leaves (correct count-weighted aggregation)
+            list = list.map(function (a) {
+              var s = resolveAgentStats(a.name, 'all', [], true);
+              if (!s) return null;
+              return Object.assign({}, a, s, { name: a.name, role: a.role, icon: a.icon, loadout: a.loadout });
+            }).filter(Boolean);
+          }
+
+          list = list.filter(function (a) { return (a.matches_seen || 0) >= minM; });
+
+          // Compute sort keys that depend on the resolved utility (now at a.utility)
+          list.forEach(function (a) {
+            var u = a.utility;
+            a.util_score = u ? u.c + u.q + u.e + u.x : null;
+            a.ult_cpr = u ? u.x : null;
+          });
+
+          list.sort(function (a, b) { var va = a[sortKey], vb = b[sortKey]; if (va === null && vb === null) return 0; if (va === null) return 1; if (vb === null) return -1; if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); } return sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1); });
+          tbody.innerHTML = '';
+          if (groupRole) {
+            // Build role→play-rate from the nested repr structure: repr[map][rank][role]
+            // Aggregate across the active map/rank filters (same logic as agent stat resolution).
+            var roleReprMap = {};
+            if (reprData) {
+              var reprMaps = Object.keys(reprData);
+              var filtMaps = (agentsMap && agentsMap !== 'all') ? [agentsMap] : reprMaps;
+              var isAllRanks2 = agentsRanksAll.size > 0 && agentsRanksAll.size === agentsRanks.size;
+              filtMaps.forEach(function (m) {
+                var mapNode = reprData[m]; if (!mapNode) return;
+                var reprRanks = Object.keys(mapNode);
+                var filtRanks = (!isAllRanks2 && agentsRanks.size > 0) ? reprRanks.filter(function (r) { return agentsRanks.has(r.toLowerCase()); }) : reprRanks;
+                filtRanks.forEach(function (r) {
+                  var rankNode = mapNode[r]; if (!rankNode) return;
+                  Object.keys(rankNode).forEach(function (role) {
+                    if (!roleReprMap[role]) roleReprMap[role] = { sum: 0, n: 0 };
+                    roleReprMap[role].sum += rankNode[role];
+                    roleReprMap[role].n++;
+                  });
+                });
+              });
+            }
+            var grp = {}; list.forEach(function (a) { if (!grp[a.role]) grp[a.role] = []; grp[a.role].push(a); });
+            Object.keys(grp).sort().forEach(function (role) {
+              var rr = roleReprMap[role];
+              var reprStr = rr && rr.n > 0 ? (rr.sum / rr.n).toFixed(1) + '%' : 'N/A';
+              var hr = document.createElement('tr'); hr.innerHTML = '<td class="role-header-row" colspan="8">' + role + '  —  play rate: ' + reprStr + '</td>';
+              tbody.appendChild(hr); grp[role].forEach(function (a) { tbody.appendChild(createRow(a)); reinsertAccordion(a, tbody); });
+            });
+          }
+          else { list.forEach(function (a) { tbody.appendChild(createRow(a)); reinsertAccordion(a, tbody); }); }
+          if (list.length === 1 && !expandedSet.has(list[0].name)) toggleAccordion(list[0]);
+        }
+
+        // Event listeners
+        document.getElementById('sortBy').addEventListener('change', function (e) { sortKey = e.target.value; renderTable(); });
+        document.getElementById('sortOrder').addEventListener('change', function (e) { sortDir = e.target.value; renderTable(); });
+        document.getElementById('minMatches').addEventListener('input', function () { renderTable(); });
+        document.getElementById('groupByRole').addEventListener('change', function (e) { groupRole = e.target.checked; renderTable(); });
+        document.getElementById('showUtil').addEventListener('change', function (e) { showUtil = e.target.checked; renderTable(); });
+
+        document.querySelectorAll('th.sortable').forEach(function (th) { th.addEventListener('click', function () { var k = th.dataset.sort; if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc'; else { sortKey = k; sortDir = 'desc'; } document.getElementById('sortBy').value = sortKey; document.getElementById('sortOrder').value = sortDir; renderTable(); }); });
+        document.querySelectorAll('.util-sort-btn').forEach(function (btn) { btn.addEventListener('click', function (e) { e.stopPropagation(); var k = btn.dataset.sort; if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc'; else { sortKey = k; sortDir = 'desc'; } document.getElementById('sortBy').value = sortKey; document.getElementById('sortOrder').value = sortDir; renderTable(); }); });
+
+        // Init map filter
+        (function () {
+          var sel = document.getElementById('agents-sel-map'), ms = new Set();
+          // 1. agent_tree by_map keys (canonical waterfall source)
+          if (metaData.agent_tree) {
+            Object.keys(metaData.agent_tree).forEach(function (name) {
+              Object.keys(metaData.agent_tree[name].by_map || {}).forEach(function (m) { ms.add(m); });
+            });
+          }
+          // 2. agent_stats_slices.maps array
+          if (!ms.size && metaData.agent_stats_slices && metaData.agent_stats_slices.maps)
+            metaData.agent_stats_slices.maps.forEach(function (m) { ms.add(m); });
+          // 3. meta/data maps lists
+          if (!ms.size && metaData.maps) metaData.maps.forEach(function (m) { ms.add(m); });
+          if (!ms.size && metaData.phase_distribution_by_map) Object.keys(metaData.phase_distribution_by_map).forEach(function (m) { ms.add(m); });
+          // 4. legacy per-agent by_map keys
+          if (!ms.size) agentsData.forEach(function (a) { if (a.by_map) Object.keys(a.by_map).forEach(function (m) { ms.add(m); }); });
+          Array.from(ms).sort().forEach(function (m) { var o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
+          if (!ms.size) sel.closest('.panel').style.display = 'none';
+        })();
+
+        // Init rank filter
+        (function () {
+          var rs = new Set();
+          // 1. agent_tree by_map.by_rank keys (canonical waterfall source)
+          if (metaData.agent_tree) {
+            Object.keys(metaData.agent_tree).forEach(function (name) {
+              var ag = metaData.agent_tree[name];
+              Object.keys(ag.by_map || {}).forEach(function (m) {
+                Object.keys((ag.by_map[m].by_rank) || {}).forEach(function (r) { rs.add(r.toLowerCase()); });
+              });
+            });
+          }
+          // 2. agent_stats_slices.ranks array
+          if (!rs.size && metaData.agent_stats_slices && metaData.agent_stats_slices.ranks)
+            metaData.agent_stats_slices.ranks.forEach(function (r) { rs.add(r.toLowerCase()); });
+          // 3. summary / meta rank lists
+          if (!rs.size && metaData.ranks) metaData.ranks.forEach(function (r) { rs.add(r.toLowerCase()); });
+          if (!rs.size && window._RD && window._RD.summary && window._RD.summary.ranks) window._RD.summary.ranks.forEach(function (r) { rs.add(r.toLowerCase()); });
+          // 4. legacy per-agent by_rank keys
+          if (!rs.size) agentsData.forEach(function (a) { if (a.by_rank) Object.keys(a.by_rank).forEach(function (r) { rs.add(r.toLowerCase()); }); });
+          var RO = ['iron', 'bronze', 'silver', 'gold', 'plat', 'diamond', 'ascend', 'immortal', 'radiant'],
+            RL = { iron: 'IRON', bronze: 'BRNZ', silver: 'SLVR', gold: 'GOLD', plat: 'PLAT', diamond: 'DIAM', ascend: 'ASC', immortal: 'IMMO', radiant: 'RAD' };
+          var g = document.getElementById('agents-rank-grid'), n = document.getElementById('agents-rank-note');
+          if (!rs.size) { g.style.display = 'none'; n.style.display = ''; n.textContent = 'No per-rank data in dataset.'; return; }
+          agentsRanks = new Set(rs);
+          agentsRanksAll = new Set(rs);
+          var pr = RO.filter(function (r) { return rs.has(r); });
+          rs.forEach(function (r) { if (RO.indexOf(r) === -1) pr.push(r); });
+          pr.forEach(function (rank) {
+            var b = document.createElement('span'); b.className = 'rank-badge ' + rank + ' active'; b.dataset.rank = rank;
+            b.textContent = RL[rank] || rank.toUpperCase().slice(0, 4);
+            b.addEventListener('click', function () {
+              if (agentsRanks.has(rank)) { agentsRanks.delete(rank); b.classList.remove('active'); }
+              else { agentsRanks.add(rank); b.classList.add('active'); }
+              renderTable();
+            });
+            g.appendChild(b);
+          });
+        })();
+
+        initRoleFilters();
+        renderTable();
+
+        function showUtilDetail(row) {
+          var slot = row.dataset.slot, panelId = row.dataset.panel;
+          var name = row.dataset.name, icon = row.dataset.icon;
+          var cpr = parseFloat(row.dataset.cpr), col = row.dataset.col;
+          var desc = row.dataset.desc || '';
+          var approx = parseInt(row.dataset.approx || Math.round(cpr * avgRounds), 10);
+          var panel = document.getElementById(panelId);
+          if (!panel) return;
+          var wasSelected = row.classList.contains('util-selected');
+          row.closest('.acc-panel').querySelectorAll('.cpr-row').forEach(function (r) { r.classList.remove('util-selected'); });
+          if (wasSelected) { panel.classList.remove('visible'); panel.innerHTML = ''; return; }
+          row.classList.add('util-selected');
+          var iconHtml = icon
+            ? '<img src="' + icon + '" style="width:28px;height:28px;object-fit:contain;" onerror="this.style.display=&#39;none&#39;">'
+            : '<span style="font-family:var(--mono);font-size:16px;color:' + col + ';">' + slot.toUpperCase() + '</span>';
+          var descHtml = desc
+            ? '<div class="udp-desc">' + desc + '</div>'
+            : '';
+          panel.innerHTML =
+            '<div class="udp-icon" style="border-color:' + col + '40;">' + iconHtml + '</div>'
+            + '<div class="udp-body">'
+            + '<div class="udp-name"><span class="udp-slot-badge" style="color:' + col + ';border-color:' + col + '50;background:' + col + '12;">' + slot.toUpperCase() + '</span>' + name + '</div>'
+            + descHtml
+            + '<div class="udp-cpr">Casts per round: <strong>' + cpr.toFixed(3) + '</strong>'
+            + ' <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-left:6px;">≈ <strong style="color:var(--text-bright);">' + approx + '</strong> casts/match</span>'
+            + (cpr > 1.0 ? ' <span style="font-size:9px;color:var(--yellow);margin-left:4px;">multi-charge</span>' : '')
+            + (cpr < 0.2 ? ' <span style="font-size:9px;color:var(--text-dim);margin-left:4px;">rarely cast</span>' : '')
+            + '</div>'
+            + '</div>';
+          panel.classList.add('visible');
+        }
+
+        window.resolveAgentStats = resolveAgentStats;
+        return { renderTable: renderTable, switchPhase: switchPhase, showUtilDetail: showUtilDetail };
+      })();
+    </script>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════
+     PAGE 2: META ANALYSIS
+═══════════════════════════════════════════════════════════════ -->
+  <div id="page-meta" class="page">
+    <style>
+      /* ── META LAYOUT ────────────────────────────────────────── */
+      .meta-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) 1fr;
+        min-height: calc(100vh - 52px);
+      }
+
+      .meta-sidebar {
+        border-right: 1px solid var(--border);
+        padding: var(--sidebar-padding);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: var(--panel);
+        position: sticky;
+        height: calc(100vh - 52px);
+        max-height: calc(100vh - 52px);
+        top: 52px;
+        overflow-y: auto;
+      }
+
+      .meta-main {
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .pfbtn {
+        display: block;
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all .12s;
+        text-align: left;
+        letter-spacing: .04em;
+        margin-bottom: 4px;
+      }
+
+      .pfbtn.active {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: var(--cyan-dim);
+      }
+
+      .section-title {
+        font-family: var(--display);
+        font-size: 10px;
+        letter-spacing: .18em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .section-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .phase-dist-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+
+      .pd-card {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        padding: 14px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .pd-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--acc, var(--cyan));
+      }
+
+      .pd-name {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+
+      .pd-pct {
+        font-family: var(--display);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--acc, var(--cyan));
+        line-height: 1;
+      }
+
+      .pd-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-top: 5px;
+      }
+
+      .meta-two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .meta-panel {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        padding: 18px;
+      }
+
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .bar-name {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text);
+        min-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        flex: 1;
+        height: 5px;
+        background: var(--border);
+        position: relative;
+        min-width: 40px;
+      }
+
+      .bar-fill {
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: var(--cyan-dim);
+        border-right: 2px solid var(--cyan);
+        transition: width .3s;
+      }
+
+      .bar-pct {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        min-width: 38px;
+        text-align: right;
+      }
+
+      .heatmap-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+      }
+
+      .hm-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--mono);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .hm-table th {
+        padding: 8px 12px;
+        font-size: 9px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg3);
+        font-weight: 400;
+      }
+
+      .hm-table td {
+        padding: 6px 10px;
+        border-bottom: 1px solid rgba(30, 48, 64, .4);
+      }
+
+      .hm-table tr:hover td {
+        background: rgba(255, 255, 255, .03);
+      }
+
+      .hm-agent {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 130px;
+      }
+
+      .hm-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        object-fit: cover;
+      }
+
+      .hm-cell {
+        text-align: center;
+        min-width: 80px;
+      }
+
+      .hm-val {
+        display: inline-block;
+        padding: 4px 8px;
+        font-size: 10px;
+        font-weight: 600;
+        font-family: var(--display);
+        border: 1px solid transparent;
+        min-width: 62px;
+        text-align: center;
+      }
+
+      .rankings-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+
+      .rank-col {
+        border: 1px solid var(--border);
+        background: var(--panel);
+      }
+
+      .rank-col-hdr {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      .rank-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 12px;
+        border-bottom: 1px solid rgba(30, 48, 64, .4);
+      }
+
+      .rank-item:last-child {
+        border-bottom: none;
+      }
+
+      .rank-pos {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        min-width: 18px;
+      }
+
+      .rank-agent {
+        font-size: 12px;
+        color: var(--text-bright);
+        flex: 1;
+        padding: 0 4px;
+      }
+
+      .rank-cpr {
+        font-family: var(--display);
+        font-size: 11px;
+      }
+
+      .meta-sidebar [data-tip]::after {
+        left: calc(100% + 10px);
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%) translateX(4px);
+        max-width: 260px;
+      }
+
+      .meta-sidebar [data-tip]:hover::after {
+        transform: translateY(-50%) translateX(0);
+      }
+
+      .meta-sidebar [data-tip]::before {
+        left: calc(100% + 4px);
+        bottom: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 5px solid transparent;
+        border-right-color: var(--border-bright);
+        border-top-color: transparent;
+      }
+
+      /* ── WEAPON CONFIG PANEL ────────────────────────────────── */
+      .wep-config-panel {
+        border: 1px solid var(--border);
+        background: var(--bg2);
+        margin-bottom: 16px;
+      }
+
+      .wep-config-hdr {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: var(--bg3);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .wep-config-hdr-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: .12em;
+        color: var(--cyan);
+        text-transform: uppercase;
+      }
+
+      .wep-config-hdr-left::before {
+        content: '// ';
+        color: var(--text-dim);
+      }
+
+      .wep-config-toggle-arrow {
+        font-size: 8px;
+        color: var(--text-dim);
+        transition: transform .2s;
+      }
+
+      .wep-config-panel.collapsed .wep-config-toggle-arrow {
+        transform: rotate(-90deg);
+      }
+
+      .wep-config-body {
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: hidden;
+        transition: max-height .25s ease;
+      }
+
+      .wep-config-panel.collapsed .wep-config-body {
+        display: none;
+      }
+
+      .wep-config-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .wep-config-action-btn {
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        transition: all .12s;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      .wep-config-action-btn:hover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+
+      .wep-config-group-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        opacity: .7;
+      }
+
+      .wep-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .wep-chip {
+        padding: 5px 10px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all .12s;
+        letter-spacing: .04em;
+        white-space: nowrap;
+      }
+
+      .wep-chip.active {
+        border-color: var(--cyan);
+        color: var(--cyan);
+        background: rgba(0, 212, 255, .08);
+      }
+
+      .wep-chip.active.sec {
+        border-color: var(--yellow);
+        color: var(--yellow);
+        background: rgba(255, 232, 77, .07);
+      }
+
+      .wep-config-summary {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text-dim);
+        letter-spacing: .06em;
+      }
+
+      .wep-config-summary span {
+        color: var(--cyan);
+      }
+    </style>
+
+    <div class="meta-layout">
+      <div class="meta-sidebar">
+        <div class="panel">
+          <div class="panel-hdr">Economy Phase</div>
+          <div class="panel-body">
+            <button class="pfbtn" data-phase="All Rounds"
+              data-tip="All rounds combined —&#10;no phase filter applied.">All Rounds</button>
+            <button class="pfbtn active" data-phase="Full Buy" data-tip="Rounds where teams spent&#10;≥3900 cr.">Full
+              Buy</button>
+            <button class="pfbtn" data-phase="Force"
+              data-tip="Rounds where teams spent&#10;~2000–3899 cr despite low economy.">Force Buy</button>
+            <button class="pfbtn" data-phase="Eco"
+              data-tip="Rounds where teams spent&#10;&lt;2000 cr — saving for next round.">Eco</button>
+            <button class="pfbtn" data-phase="Pistol"
+              data-tip="Round 1 and round 13 only.&#10;All players start with 800 cr.">Pistol</button>
+            <button class="pfbtn" data-phase="Round 2 (r1 loss)"
+              data-tip="Round 2 following a round 1 loss.&#10;Team carries over pistol-round economy.">Round 2 (r1
+              loss)</button>
+            <button class="pfbtn" data-phase="Round 2 (r1 won)"
+              data-tip="Round 2 following a round 1 win.&#10;Team has a stronger economic foundation.">Round 2 (r1
+              won)</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Map</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <select id="meta-sel-map"
+              style="width:100%;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;">
+              <option value="all">All Maps</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Rank Filter</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <div class="rank-grid" id="meta-rank-grid"></div>
+            <div id="meta-rank-note"
+              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:6px;line-height:1.6;opacity:.6;display:none;">
+              No rank data in dataset.</div>
+            <div
+              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;">
+              Applies to Weapon Buy Rates section only.</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">Display</div>
+          <div class="panel-body" style="padding:10px 12px;">
+            <div class="checkbox-group"><input type="checkbox" id="econGroupByRole" checked><label for="econGroupByRole"
+                data-tip="Group agents into labelled&#10;role sections. Stays active&#10;even when sorting by weapon.">Group
+                by role</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta-main">
+        <div>
+          <div class="section-title">Buy Phase Distribution</div>
+          <div class="phase-dist-row" id="meta-phase-dist"></div>
+        </div>
+        <div class="meta-two-col">
+          <div class="meta-panel">
+            <div class="section-title" style="margin-bottom:12px;">Weapon Meta</div>
+            <div id="meta-weapons"></div>
+          </div>
+          <div class="meta-panel">
+            <div class="section-title" style="margin-bottom:12px;">Shield Distribution</div>
+            <div id="meta-shields"></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title">Weapon Buy Rates by Agent</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:14px;">
+            % of rounds each agent bought a given weapon in the active phase. Filter by map and rank to answer questions
+            like <em style="color:var(--cyan);">"who is more likely to buy a Vandal round 2?"</em>
+          </div>
+
+          <!-- Weapon column config panel -->
+          <div class="wep-config-panel" id="wep-config-panel">
+            <div class="wep-config-hdr" id="wep-config-hdr">
+              <div class="wep-config-hdr-left">Weapon Columns &nbsp;<span class="wep-config-summary"
+                  id="wep-config-summary"><span id="wep-config-count">—</span> selected</span></div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="wep-config-actions">
+                  <button class="wep-config-action-btn" id="wep-sel-all-primary">Primary: All</button>
+                  <button class="wep-config-action-btn" id="wep-sel-rifles">Rifles Only</button>
+                  <button class="wep-config-action-btn" id="wep-sel-none">None</button>
+                  <button class="wep-config-action-btn" id="wep-sel-reset">Reset</button>
+                </div>
+                <span class="wep-config-toggle-arrow" id="wep-config-arrow">▼</span>
+              </div>
+            </div>
+            <div class="wep-config-body" id="wep-config-body">
+              <div>
+                <div class="wep-config-group-label">Primary Weapons</div>
+                <div class="wep-chips" id="wep-chips-primary"></div>
+              </div>
+              <div>
+                <div class="wep-config-group-label">Secondary Weapons</div>
+                <div class="wep-chips" id="wep-chips-secondary"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="meta-economy"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.metaPage = (function () {
+        'use strict';
+        var RD = window.REPORT_DATA;
+        var agentsData = RD.agents, metaData = RD.meta;
+
+        var metaPhase = 'Full Buy', hmSort = 'x', hmDir = 'desc', metaMap = 'all', econSortCol = null, econSortDir = 'desc', econGroupByRole = true;
+        var metaRanks = new Set();    // populated by init — only ranks present in data
+        var metaRanksAll = new Set(); // all ranks in data (for isAllRanks check)
+        var econWeaponFilter = null; // null = show top-10 auto; Set = explicit whitelist
+        var SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' };
+
+        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#6a8aa8', bg: '#0d1520', abbr: 'N' } };
+        var SHIELD_KEYS = ['Heavy Armor', 'Light Armor', 'Regen Shield', '(none)'];
+        function shieldEntries(sh) { sh = sh || {}; var keys = SHIELD_KEYS.slice(); Object.keys(sh).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); keys.sort(function (a, b) { if (a === '(none)') return 1; if (b === '(none)') return -1; return (sh[b] ? sh[b].buy_rate_pct : 0) - (sh[a] ? sh[a].buy_rate_pct : 0); }); return keys.map(function (n) { var s = SHIELD_STYLE[n] || { col: 'var(--text-dim)', bg: '#1a2d3d', abbr: n.charAt(0).toUpperCase() }; return { name: n, pct: sh[n] ? sh[n].buy_rate_pct : 0, col: s.col, bg: s.bg, abbr: s.abbr }; }); }
+
+        function barRow(n, p, mp, cs) { var w = mp > 0 ? (p / mp * 100) : 0, f = cs || 'background:var(--cyan-dim);border-right:2px solid var(--cyan);'; return '<div class="bar-row"><div class="bar-name">' + n + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;' + f + '"></div></div><div class="bar-pct">' + p.toFixed(1) + '%</div></div>'; }
+        function shieldBarsHTML(sh) { var e = shieldEntries(sh), mx = Math.max.apply(null, e.map(function (x) { return x.pct; }).concat([0.01])); return e.map(function (x) { var w = mx > 0 ? (x.pct / mx * 100) : 0; return '<div class="bar-row"><div class="bar-name">' + x.name + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;background:' + x.col + '55;border-right:2px solid ' + x.col + ';"></div></div><div class="bar-pct" style="color:' + x.col + '">' + x.pct.toFixed(1) + '%</div></div>'; }).join(''); }
+
+        var SEC = new Set(['Classic', 'Shorty', 'Frenzy', 'Ghost', 'Sheriff', 'Bandit']);
+        var SEC_KEYS = ['Classic', 'Ghost', 'Sheriff', 'Shorty', 'Frenzy', 'Bandit'];
+        function normName(n) { if (!n) return 'Classic'; var x = n.trim().toLowerCase().replace(/\s+/g, ' '); if (/^\(?none(\s*\/\s*classic)?\)?$/.test(x) || x === '(classic)' || x === 'classic (default)') return 'Classic'; return n.trim(); }
+        function cls(n) { return SEC.has(normName(n)) ? 'secondary' : 'primary'; }
+        function normObj(o) { var out = {}; Object.entries(o || {}).forEach(function (e) { var k = normName(e[0]); out[k] = out[k] ? { buy_rate_pct: (out[k].buy_rate_pct || 0) + (e[1].buy_rate_pct || 0) } : e[1]; }); return out; }
+        function splitWRaw(o) { o = normObj(o); var p = [], s = []; Object.entries(o).forEach(function (e) { if (cls(e[0]) === 'secondary') s.push(e); else p.push(e); }); p.sort(function (a, b) { return (b[1].buy_rate_pct || 0) - (a[1].buy_rate_pct || 0); }); s.sort(function (a, b) { return (b[1].buy_rate_pct || 0) - (a[1].buy_rate_pct || 0); }); return { primary: p, secondary: s }; }
+        function subHdr(label, col) { return '<div style="font-family:var(--mono);font-size:9px;color:' + col + ';letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;margin-top:10px;opacity:.85;">' + label + '</div>'; }
+
+        function renderPhaseDist() {
+          var pd = metaData.phase_distribution || {}, ac = { Pistol: 'var(--yellow)', Eco: 'var(--red)', Force: 'var(--cyan)', 'Full Buy': 'var(--green)' };
+          var el = document.getElementById('meta-phase-dist'), html = '';
+          ['Pistol', 'Eco', 'Force', 'Full Buy'].forEach(function (ph) { var d = pd[ph] || { count: 0, pct: 0 }; html += '<div class="pd-card" style="--acc:' + ac[ph] + '"><div class="pd-name">' + ph + '</div><div class="pd-pct">' + d.pct.toFixed(1) + '<span style="font-size:13px;color:var(--text-dim)">%</span></div><div class="pd-sub">' + (d.count || 0).toLocaleString() + ' rounds</div></div>'; });
+          el.innerHTML = html;
+        }
+
+        function renderMetaWeapons() {
+          var el = document.getElementById('meta-weapons');
+          var data = {};
+          if (metaPhase === 'All Rounds') {
+            var byPhase = metaData.weapons_by_phase || {};
+            ['Full Buy', 'Force', 'Eco', 'Pistol'].forEach(function (ph) { Object.entries(byPhase[ph] || {}).forEach(function (e) { if (!data[e[0]]) data[e[0]] = { buy_rate_pct: 0, _count: 0 }; data[e[0]].buy_rate_pct += e[1].buy_rate_pct; data[e[0]]._count++; }); });
+            Object.keys(data).forEach(function (k) { if (data[k]._count > 0) data[k].buy_rate_pct /= data[k]._count; });
+          } else {
+            data = (metaData.weapons_by_phase || {})[metaPhase] || {};
+          }
+          var sp = splitWRaw(data);
+          var primEntries = sp.primary.slice(0, 8);
+          var secEntries = sp.secondary.length > 0 ? sp.secondary : [['Classic', { buy_rate_pct: 100 }]];
+          var primMax = primEntries.length ? Math.max.apply(null, primEntries.map(function (e) { return e[1].buy_rate_pct; })) : 1;
+          var secMax = secEntries.length ? Math.max.apply(null, secEntries.map(function (e) { return e[1].buy_rate_pct; })) : 1;
+          var phLabel = '<div style="font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:.1em;margin-bottom:8px;">PHASE: ' + metaPhase.toUpperCase() + '</div>';
+          var primBars = primEntries.length ? primEntries.map(function (e) { return barRow(e[0], e[1].buy_rate_pct, primMax, 'background:rgba(0,212,255,.18);border-right:2px solid var(--cyan);'); }).join('') : '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No primary data.</div>';
+          var secBars = secEntries.map(function (e) { return barRow(e[0], e[1].buy_rate_pct, secMax, 'background:rgba(255,232,77,.15);border-right:2px solid var(--yellow);'); }).join('');
+          el.innerHTML = !primEntries.length && !sp.secondary.length
+            ? '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data loaded.</div>'
+            : phLabel + subHdr('Primary', 'var(--cyan)') + '<div>' + primBars + '</div>' + subHdr('Secondary', 'var(--yellow)') + '<div>' + secBars + '</div>';
+        }
+
+        function renderMetaShields() {
+          var el = document.getElementById('meta-shields'), s = metaData.shields_overall || {};
+          el.innerHTML = shieldBarsHTML(s) || '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data.</div>';
+        }
+
+        var SEC_META = new Set(['Classic', 'Shorty', 'Frenzy', 'Ghost', 'Sheriff', 'Bandit']);
+        var PRI_META = new Set(['Vandal', 'Phantom', 'Guardian', 'Bulldog', 'Spectre', 'Stinger', 'Operator', 'Outlaw', 'Marshal', 'Judge', 'Bucky', 'Ares', 'Odin']);
+        var RIFLES_META = new Set(['Vandal', 'Phantom', 'Guardian', 'Bulldog']);
+        var _wepConfigInit = false;
+        var _wepConfigAllW = [];
+
+        function initWepConfigPanel(allW) {
+          // Only (re)build chips when the weapon list changes
+          var key = allW.join(',');
+          if (_wepConfigInit && _wepConfigAllW.join(',') === key) return;
+          _wepConfigInit = true; _wepConfigAllW = allW.slice();
+
+          // On first init, default filter = top 10
+          if (econWeaponFilter === null) { econWeaponFilter = new Set(allW.slice(0, 10)); }
+
+          var pri = allW.filter(function (w) { return !SEC_META.has(w); }),
+            sec = allW.filter(function (w) { return SEC_META.has(w); });
+          if (!sec.length) sec = allW.filter(function (w) { return SEC_META.has(w) || w === 'Classic'; });
+
+          function makeChips(containerEl, weapons, isSec) {
+            containerEl.innerHTML = '';
+            weapons.forEach(function (w) {
+              var chip = document.createElement('button');
+              chip.className = 'wep-chip' + (econWeaponFilter.has(w) ? ' active' + (isSec ? ' sec' : '') : '');
+              chip.textContent = w;
+              chip.dataset.weapon = w;
+              chip.dataset.sec = isSec ? '1' : '0';
+              chip.addEventListener('click', function () {
+                if (econWeaponFilter.has(w)) { econWeaponFilter.delete(w); chip.classList.remove('active', 'sec'); }
+                else { econWeaponFilter.add(w); chip.classList.add('active'); if (isSec) chip.classList.add('sec'); }
+                updateWepConfigSummary();
+                econSortCol = null;
+                renderEconomy();
+              });
+              containerEl.appendChild(chip);
+            });
+          }
+
+          makeChips(document.getElementById('wep-chips-primary'), pri, false);
+          makeChips(document.getElementById('wep-chips-secondary'), sec, true);
+          updateWepConfigSummary();
+        }
+
+        function updateWepConfigSummary() {
+          var n = econWeaponFilter ? econWeaponFilter.size : 0;
+          var el = document.getElementById('wep-config-count');
+          if (el) el.textContent = n;
+          // Sync chip active states
+          document.querySelectorAll('.wep-chip').forEach(function (c) {
+            var w = c.dataset.weapon, isSec = c.dataset.sec === '1';
+            if (econWeaponFilter && econWeaponFilter.has(w)) { c.classList.add('active'); if (isSec) c.classList.add('sec'); }
+            else { c.classList.remove('active', 'sec'); }
+          });
+        }
+
+        // Collapse toggle
+        document.getElementById('wep-config-hdr').addEventListener('click', function (e) {
+          if (e.target.closest('.wep-config-action-btn')) return;
+          var panel = document.getElementById('wep-config-panel');
+          panel.classList.toggle('collapsed');
+        });
+
+        // Quick-select buttons
+        document.getElementById('wep-sel-all-primary').addEventListener('click', function () {
+          _wepConfigAllW.forEach(function (w) { if (!SEC_META.has(w)) econWeaponFilter.add(w); });
+          updateWepConfigSummary(); econSortCol = null; renderEconomy();
+        });
+        document.getElementById('wep-sel-rifles').addEventListener('click', function () {
+          econWeaponFilter = new Set(RIFLES_META);
+          updateWepConfigSummary(); econSortCol = null; renderEconomy();
+        });
+        document.getElementById('wep-sel-none').addEventListener('click', function () {
+          econWeaponFilter = new Set();
+          updateWepConfigSummary(); econSortCol = null; renderEconomy();
+        });
+        document.getElementById('wep-sel-reset').addEventListener('click', function () {
+          econWeaponFilter = new Set(_wepConfigAllW.slice(0, 10));
+          updateWepConfigSummary(); econSortCol = null; renderEconomy();
+        });
+
+        function renderEconomy() {
+          var el = document.getElementById('meta-economy');
+          var useCtx = metaData.agent_weapon_context && (metaMap !== 'all' || (metaRanksAll.size > 0 && metaRanks.size < metaRanksAll.size));
+          var rows = [];
+          var ALL_PHASES = ['Full Buy', 'Force', 'Eco', 'Pistol'];
+          var isAll = metaPhase === 'All Rounds';
+          // Resolve by_phase from the agent_tree using the same waterfall+fuse logic as agent stats.
+          // by_phase is on leaf stat nodes (not on a.loadout), so we use resolveAgentStats which
+          // now carries by_phase through fuseStats/fuseByPhase.
+          var metaSelRanks = Array.from(metaRanks);
+          var metaIsAllRanks = metaRanksAll.size > 0 && metaRanksAll.size === metaRanks.size;
+          agentsData.forEach(function (a) {
+            var resolved = resolveAgentStats(a.name, metaMap, metaSelRanks, metaIsAllRanks);
+            var agentByPhase = resolved && resolved.by_phase;
+            if (!agentByPhase) return;
+            var wps = {};
+            var phases = isAll ? ALL_PHASES : [metaPhase];
+            phases.forEach(function (ph) {
+              var phData = agentByPhase[ph];
+              if (phData && phData.weapons) Object.entries(phData.weapons).forEach(function (pair) {
+                wps[pair[0]] = (wps[pair[0]] || 0) + pair[1].buy_rate_pct;
+              });
+            });
+            if (isAll) { Object.keys(wps).forEach(function (w) { wps[w] /= phases.length; }); }
+            if (Object.keys(wps).length) rows.push({ name: a.name, role: a.role, icon: a.icon, weapons: wps, wr: resolved.win_rate != null ? resolved.win_rate : null });
+          });
+
+          if (!rows.length) { el.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:20px 0;">No weapon loadout data available for this phase.</div>'; return; }
+
+          var wt = {}; rows.forEach(function (r) { Object.entries(r.weapons).forEach(function (p) { wt[p[0]] = (wt[p[0]] || 0) + p[1]; }); });
+          var allW = Object.entries(wt).sort(function (a, b) { return b[1] - a[1]; }).map(function (e) { return e[0]; });
+          // Populate config panel chips on first render (or if weapons changed)
+          initWepConfigPanel(allW);
+          // Determine which columns to show
+          var topW;
+          if (econWeaponFilter !== null) {
+            // Keep only weapons that are in the filter, preserve frequency order
+            topW = allW.filter(function (w) { return econWeaponFilter.has(w); });
+          } else {
+            topW = allW.slice(0, 10);
+          }
+          if (!topW.length) { el.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);padding:20px 0;">No weapon data for this phase.</div>'; return; }
+
+          var colMax = {}; topW.forEach(function (w) { colMax[w] = Math.max.apply(null, rows.map(function (r) { return r.weapons[w] || 0; }).concat([0.01])); });
+
+          var RO = { 'Duelist': 0, 'Initiator': 1, 'Controller': 2, 'Sentinel': 3 }, RC = { 'Duelist': '#ff4655', 'Initiator': '#ffe84d', 'Controller': '#00d4ff', 'Sentinel': '#39ff14' };
+          // Default: sort by win rate desc within role; econSortCol overrides
+          rows.sort(function (a, b) { var d = (RO[a.role] || 9) - (RO[b.role] || 9); if (d !== 0) return d; var wa = a.wr != null ? a.wr : -Infinity, wb = b.wr != null ? b.wr : -Infinity; return wb - wa; });
+          if (econSortCol) {
+            if (econGroupByRole) {
+              // Sort within each role group
+              rows.sort(function (a, b) {
+                var rd = (RO[a.role] || 9) - (RO[b.role] || 9);
+                if (rd !== 0) return rd;
+                var va = a.weapons[econSortCol] || 0, vb = b.weapons[econSortCol] || 0;
+                return econSortDir === 'desc' ? vb - va : va - vb;
+              });
+            } else {
+              rows.sort(function (a, b) { var va = a.weapons[econSortCol] || 0, vb = b.weapons[econSortCol] || 0; return econSortDir === 'desc' ? vb - va : va - vb; });
+            }
+          }
+
+          var rl = Array.from(metaRanks), rn = (metaRanksAll.size > 0 && rl.length === metaRanksAll.size) ? 'ALL RANKS' : (rl.length === 0 ? 'NO RANKS' : rl.map(function (r) { return r.toUpperCase(); }).join(' · '));
+          var mn = metaMap === 'all' ? 'ALL MAPS' : metaMap.toUpperCase();
+          var PC = { 'Full Buy': '#39ff14', 'Force': '#ffe84d', 'Eco': '#ff4655', 'Pistol': '#00d4ff', 'Round 2 (r1 loss)': '#ff8c42', 'Round 2 (r1 won)': '#a78bfa' }, pc = PC[metaPhase] || 'var(--cyan)';
+
+          var ctx2 = '<div style="font-family:var(--mono);font-size:9px;color:#3a5a78;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;"><span style="color:' + pc + ';border:1px solid ' + pc + '44;padding:1px 7px;font-size:8px;letter-spacing:.1em;">' + metaPhase.toUpperCase() + '</span><span style="letter-spacing:.08em;">MAP: <span style="color:var(--cyan)">' + mn + '</span></span><span style="letter-spacing:.08em;">RANKS: <span style="color:var(--yellow)">' + rn + '</span></span>' + (useCtx ? '' : '<span style="color:#3a5a78;font-size:8px;">— using flat loadout data</span>') + '</div>';
+
+          function arr(w) { if (econSortCol !== w) return '<span style="opacity:.2;font-size:8px;"> ⇅</span>'; return econSortDir === 'desc' ? '<span style="font-size:8px;"> ▼</span>' : '<span style="font-size:8px;"> ▲</span>'; }
+
+          var html = ctx2 + '<div style="overflow-x:auto;"><table class="hm-table" style="min-width:700px;"><thead><tr><th style="min-width:140px;font-size:9px;text-align:left;cursor:default;">Agent</th><th class="hm-wr-th" title="Agent overall win rate. Rows sorted high→low within each role group.">WIN RATE ↕</th>';
+          topW.forEach(function (w) { var ia = econSortCol === w; html += '<th class="hm-cell" style="cursor:pointer;user-select:none;' + (ia ? 'color:var(--cyan);background:rgba(255,255,255,.04);' : 'color:var(--text-dim);') + '" data-econw="' + w + '">' + w + arr(w) + '</th>'; });
+          html += '</tr></thead><tbody>';
+          var lr = null;
+          rows.forEach(function (r) {
+            if (econGroupByRole && r.role !== lr) { lr = r.role; var rc = RC[r.role] || '#6a8aa8'; html += '<tr><td colspan="' + (topW.length + 2) + '" style="background:linear-gradient(90deg,' + rc + '28 0%,' + rc + '0a 100%);padding:5px 10px 5px 14px;font-family:var(--mono);font-size:9px;color:' + rc + ';letter-spacing:.18em;text-transform:uppercase;border-top:1px solid ' + rc + '55;border-bottom:1px solid ' + rc + '22;box-shadow:inset 3px 0 0 ' + rc + ';">' + r.role + '</td></tr>'; }
+            html += '<tr><td><div class="hm-agent">' + (r.icon ? '<img class="hm-icon" src="' + r.icon + '" onerror="this.style.display=\'none\'">' : '') + '<span style="font-family:var(--mono);font-size:11px;">' + r.name + '</span></div></td>';
+            // Win rate cell
+            if (r.wr != null) { var wrV = r.wr, isHigh = wrV >= 52, isMid = wrV >= 49, wrCol = isHigh ? '#00d4aa' : isMid ? 'var(--text-bright)' : '#ff4655', wrBarPct = Math.max(0, Math.min(100, (wrV - 40) * 5)), wrBarCol = isHigh ? '#00d4aa33' : isMid ? '#ffffff22' : '#ff465533'; html += '<td class="hm-wr-col"><div class="hm-wr-val" style="color:' + wrCol + ';">' + wrV.toFixed(1) + '%</div><div class="hm-wr-bar"><div class="hm-wr-bar-fill" style="width:' + wrBarPct + '%;background:' + wrCol + ';opacity:.7;"></div></div></td>'; }
+            else { html += '<td class="hm-wr-col"><div class="hm-wr-val" style="color:#1e3040;">—</div></td>'; }
+            topW.forEach(function (w) {
+              var p = r.weapons[w] || 0, norm = colMax[w] > 0 ? p / colMax[w] : 0;
+              if (p === 0) { html += '<td class="hm-cell"><div class="hm-val" style="color:#1e3040;border-color:#1e3040;background:transparent;">—</div></td>'; return; }
+              // Parse phase colour into r,g,b so we can tint with controlled opacity
+              var pr = 0, pg = 0, pb = 0;
+              if (pc.startsWith('#') && pc.length >= 7) { pr = parseInt(pc.slice(1, 3), 16); pg = parseInt(pc.slice(3, 5), 16); pb = parseInt(pc.slice(5, 7), 16); }
+              else if (pc.startsWith('rgba')) { var m = pc.match(/[\d.]+/g); if (m) { pr = +m[0]; pg = +m[1]; pb = +m[2]; } }
+              // Background: low-opacity tint so colour never gets harsh (max alpha 0.45)
+              var bgA = (0.06 + norm * 0.39).toFixed(2);
+              var bg = 'rgba(' + pr + ',' + pg + ',' + pb + ',' + bgA + ')';
+              var brdA = (0.12 + norm * 0.28).toFixed(2);
+              var brd = 'rgba(' + pr + ',' + pg + ',' + pb + ',' + brdA + ')';
+              // Text: use the phase colour at reduced opacity for low values, brighten for high values.
+              // Never white-on-bright — always use the phase colour itself (legible against dark bg).
+              var textA = Math.min(0.55 + norm * 0.45, 1).toFixed(2);
+              var tc = 'rgba(' + pr + ',' + pg + ',' + pb + ',' + textA + ')';
+              html += '<td class="hm-cell"><div class="hm-val" style="background:' + bg + ';border-color:' + brd + ';color:' + tc + '">' + p.toFixed(1) + '%</div></td>';
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table></div>';
+          el.innerHTML = html;
+
+          el.querySelectorAll('th[data-econw]').forEach(function (th) { th.addEventListener('click', function () { var w = th.dataset.econw; if (econSortCol === w) econSortDir = econSortDir === 'desc' ? 'asc' : 'desc'; else { econSortCol = w; econSortDir = 'desc'; } renderEconomy(); }); });
+        }
+
+        // Event listeners
+        document.querySelectorAll('.pfbtn[data-phase]').forEach(function (btn) { btn.addEventListener('click', function () { document.querySelectorAll('.pfbtn[data-phase]').forEach(function (b) { b.classList.remove('active'); }); btn.classList.add('active'); metaPhase = btn.dataset.phase; econSortCol = null; renderMetaWeapons(); renderEconomy(); }); });
+        document.getElementById('meta-sel-map').addEventListener('change', function (e) { metaMap = e.target.value; renderEconomy(); });
+        document.getElementById('econGroupByRole').addEventListener('change', function (e) { econGroupByRole = e.target.checked; renderEconomy(); });
+
+        // Init meta map dropdown
+        (function () {
+          var sel = document.getElementById('meta-sel-map'), ms = new Set();
+          // New shape: agent_stats_slices.maps is a plain array
+          if (metaData.agent_stats_slices && metaData.agent_stats_slices.maps)
+            metaData.agent_stats_slices.maps.forEach(function (m) { ms.add(m); });
+          if (!ms.size && metaData.maps) metaData.maps.forEach(function (m) { ms.add(m); });
+          if (!ms.size && metaData.phase_distribution_by_map) Object.keys(metaData.phase_distribution_by_map).forEach(function (m) { ms.add(m); });
+          if (!ms.size && window.ROUND_STATS && window.ROUND_STATS.maps) window.ROUND_STATS.maps.forEach(function (m) { ms.add(m); });
+          // Legacy flat-key fallback
+          if (!ms.size && metaData.agent_stats_slices && metaData.agent_stats_slices.data) {
+            Object.keys(metaData.agent_stats_slices.data).forEach(function (k) {
+              var parts = k.split('|'); if (parts.length >= 1 && parts[0] !== '__all__') ms.add(parts[0]);
+            });
+          }
+          Array.from(ms).sort().forEach(function (m) { var o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
+          if (!ms.size) sel.closest('.panel').style.display = 'none';
+        })();
+
+        // Init meta rank filter — dynamic badges from data only
+        (function () {
+          var rs = new Set();
+          // 1. agent_tree by_map.by_rank keys (canonical waterfall source)
+          if (metaData.agent_tree) {
+            Object.keys(metaData.agent_tree).forEach(function (name) {
+              var ag = metaData.agent_tree[name];
+              Object.keys(ag.by_map || {}).forEach(function (m) {
+                Object.keys((ag.by_map[m].by_rank) || {}).forEach(function (r) { rs.add(r.toLowerCase()); });
+              });
+            });
+          }
+          // 2. agent_stats_slices.ranks array
+          if (!rs.size && metaData.agent_stats_slices && metaData.agent_stats_slices.ranks)
+            metaData.agent_stats_slices.ranks.forEach(function (r) { rs.add(r.toLowerCase()); });
+          // 3. meta rank lists
+          if (!rs.size && metaData.ranks) metaData.ranks.forEach(function (r) { rs.add(r.toLowerCase()); });
+          // 4. legacy per-agent by_rank keys
+          if (!rs.size) agentsData.forEach(function (a) { if (a.by_rank) Object.keys(a.by_rank).forEach(function (r) { rs.add(r.toLowerCase()); }); });
+          var RO = ['iron', 'bronze', 'silver', 'gold', 'plat', 'diamond', 'ascend', 'immortal', 'radiant'],
+            RL = { iron: 'IRON', bronze: 'BRNZ', silver: 'SLVR', gold: 'GOLD', plat: 'PLAT', diamond: 'DIAM', ascend: 'ASC', immortal: 'IMMO', radiant: 'RAD' };
+          var g = document.getElementById('meta-rank-grid'), n = document.getElementById('meta-rank-note');
+          if (!rs.size) { g.style.display = 'none'; if (n) { n.style.display = ''; n.textContent = 'No rank data in dataset.'; } return; }
+          metaRanks = new Set(rs);
+          metaRanksAll = new Set(rs);
+          var pr = RO.filter(function (r) { return rs.has(r); });
+          rs.forEach(function (r) { if (RO.indexOf(r) === -1) pr.push(r); });
+          pr.forEach(function (rank) {
+            var b = document.createElement('span'); b.className = 'rank-badge ' + rank + ' active'; b.dataset.rank = rank;
+            b.textContent = RL[rank] || rank.toUpperCase().slice(0, 4);
+            b.addEventListener('click', function () {
+              if (metaRanks.has(rank)) { metaRanks.delete(rank); b.classList.remove('active'); }
+              else { metaRanks.add(rank); b.classList.add('active'); }
+              renderEconomy();
+            });
+            g.appendChild(b);
+          });
+        })();
+
+        renderPhaseDist();
+        renderMetaWeapons();
+        renderMetaShields();
+        renderEconomy();
+
+        return {};
+      })();
+    </script>
+
+  </div>
+
+
+  <script>
+    'use strict';
+
+    // ── BOOTSTRAP ────────────────────────────────────────────────────────────────
+    const RD = window.REPORT_DATA;
+
+    if (!RD) {
+      document.getElementById('page-agents').innerHTML =
+        '<div id="no-data-banner">No data loaded.<br>Run your Python script to generate <code>report_data.js</code> alongside this file.<br><code>python agent_stats.py</code></div>';
+      document.getElementById('page-meta').innerHTML = '';
+    } else {
+      const s = RD.summary;
+      document.getElementById('header-meta').innerHTML =
+        'MATCHES <span>' + s.matches + '</span>&nbsp;&nbsp;|&nbsp;&nbsp;' +
+        'TEAMS <span>' + s.total_teams + '</span>&nbsp;&nbsp;|&nbsp;&nbsp;' +
+        'AGENTS <span>' + s.unique_agents + '</span>';
+    }
+
+    // ── PAGE SWITCHER ─────────────────────────────────────────────────────────────
+    function showPage(name, btn) {
+      document.querySelectorAll('.page').forEach(function (p) { p.classList.remove('active'); });
+      document.getElementById('page-' + name).classList.add('active');
+      document.querySelectorAll('.nav-tab').forEach(function (t) { t.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      var isUtil = name === 'util';
+      document.getElementById('header-meta').style.display = isUtil ? 'none' : '';
+      document.getElementById('util-header-right').style.display = isUtil ? 'flex' : 'none';
+    }
+
+    // ── UTIL IFRAME MESSAGES ──────────────────────────────────────────────────────
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'util-data-loaded') {
+        const d = e.data;
+        const badge = document.getElementById('util-data-source-badge');
+        if (badge) {
+          badge.innerHTML = '<span class="util-status-dot"></span>' + (d.name ? d.name + '#' + d.tag + '  ·  ' : '') + d.round_count.toLocaleString() + ' rounds  ·  ' + d.match_count + ' matches';
+          badge.style.color = 'var(--green)';
+        }
+        const btn = document.getElementById('util-btn-stats-report-hdr');
+        if (btn) btn.style.display = '';
+      }
+      if (e.data && e.data.type === 'util-act-update') {
+        const el = document.getElementById('util-current-act-label');
+        if (el) el.textContent = e.data.label;
+      }
+      if (e.data && e.data.type === 'show-stats-report') {
+        document.getElementById('util-stats-report-text').textContent = e.data.text;
+        document.getElementById('util-stats-modal').style.display = 'block';
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') document.getElementById('util-stats-modal').style.display = 'none';
+    });
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+     PAGE 3: UTIL CHARGE CALCULATOR (loaded as iframe)
+═══════════════════════════════════════════════════════════════ -->
+  <div id="page-util" class="page" style="height:calc(100vh - 65px);">
+    <iframe id="util-iframe" src="util.html" style="width:100%;height:100%;border:none;display:block;"
+      scrolling="yes"></iframe>
+  </div>
+
+  <!-- Stats Report Modal -->
+  <div id="util-stats-modal"
+    style="display:none;position:fixed;inset:0;z-index:900;background:#000000cc;backdrop-filter:blur(3px);"
+    onclick="if(event.target===this)this.style.display='none'">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+              width:min(860px,92vw);max-height:80vh;
+              background:var(--bg2);border:1px solid var(--border-bright);
+              display:flex;flex-direction:column;">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);
+                display:flex;justify-content:space-between;align-items:center;
+                background:var(--bg3);">
+        <span style="font-family:var(--display);font-size:11px;letter-spacing:.15em;color:var(--cyan)">// DATA
+          REPORT</span>
+        <button onclick="document.getElementById('util-stats-modal').style.display='none'"
+          style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <pre id="util-stats-report-text" style="padding:20px 24px;margin:0;overflow:auto;
+         font-family:var(--mono);font-size:13px;line-height:1.8;color:var(--text);
+         white-space:pre;flex:1;"></pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+     PAGE 5: MATCH HISTORY (loaded as iframe)
+═══════════════════════════════════════════════════════════════ -->
+  <div id="page-matchhistory" class="page" style="height:calc(100vh - 52px);">
+    <iframe id="matchhistory-iframe" src="match-history.html" style="width:100%;height:100%;border:none;display:block;"
+      scrolling="yes"></iframe>
+  </div>
+
+</body>
+
+</html>

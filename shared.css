@@ -1,0 +1,333 @@
+/*
+ * shared.css — VAL STATS common design system
+ * Both index.html and util.html link to this file.
+ * Per-page styles stay in their own <style> blocks.
+ *
+ * FONT IMPORT (paste into each page's <head>):
+ * <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono
+ *   &family=Barlow+Condensed:wght@300;400;600;700;900
+ *   &family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+ */
+
+/* ── DESIGN TOKENS ─────────────────────────────────────────── */
+:root {
+  /* accent palette */
+  --red: #ff4655;      --red-dim: #7a1f28;
+  --cyan: #00d4ff;     --cyan-dim: #003d4d;
+  --yellow: #ffe84d;
+  --green: #39ff14;    --green-dim: #0d3d05;
+
+  /* backgrounds */
+  --bg: #0b0f13;  --bg2: #101720;  --bg3: #161f2a;  --panel: #0d1520;
+
+  /* borders */
+  --border: #1e3040;  --border-bright: #2e4860;
+
+  /* text */
+  --text: #d8eaf8;  --text-dim: #6a8aa8;  --text-bright: #eef6ff;
+
+  /* typography */
+  --mono:    'Share Tech Mono', monospace;
+  --display: 'Orbitron', sans-serif;
+  --body:    'Barlow Condensed', sans-serif;
+
+  /* glows */
+  --glow-red:   0 0 8px #ff465588, 0 0 20px #ff465530;
+  --glow-cyan:  0 0 8px #00d4ff88, 0 0 20px #00d4ff30;
+  --glow-green: 0 0 8px #39ff1488, 0 0 20px #39ff1430;
+
+  /* ── sidebar / panel system ────────────────────────────────
+     Each page sets --sidebar-width and --sidebar-padding to fit
+     its own layout. These defaults are for the util page.     */
+  --sidebar-width:   340px;
+  --sidebar-padding: 20px;
+
+  /* panel headers — single source of truth for font scale */
+  --panel-hdr-size:    12px;
+  --panel-hdr-padding: 11px 16px;
+}
+
+/* ── RESET ──────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ── BASE BODY ──────────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 17px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 80% 20%, #ff465508 0%, transparent 60%),
+    radial-gradient(ellipse 50% 50% at 10% 80%, #00d4ff06 0%, transparent 60%),
+    linear-gradient(180deg, #0b0f13 0%, #080c12 100%);
+}
+
+/* ── SCROLLBAR ──────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 4px; height: 4px; }
+::-webkit-scrollbar-track  { background: var(--bg); }
+::-webkit-scrollbar-thumb  { background: var(--border-bright); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR / PANEL SYSTEM
+   Used by util.html directly; index.html uses it for the
+   util page (iframe host) and its own meta-sidebar variant.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── UTIL APP LAYOUT ────────────────────────────────────────── */
+.util-app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+  align-items: start;
+}
+
+/* ── SIDEBAR ────────────────────────────────────────────────── */
+.util-sidebar {
+  border-right: 1px solid var(--border);
+  padding: var(--sidebar-padding);
+  display: flex; flex-direction: column; gap: 16px;
+  background: var(--panel);
+  position: sticky; top: 0; max-height: 100vh; overflow-y: auto;
+  height: 100%;
+}
+
+/* ── SIDEBAR PANELS ─────────────────────────────────────────── */
+.util-panel { border: 1px solid var(--border); background: var(--bg2); border-radius: 2px; }
+
+.util-panel-header {
+  padding: var(--panel-hdr-padding);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: var(--panel-hdr-size);   /* ← standardized: was mixed 10/11px */
+  letter-spacing: .12em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.util-panel-header::before { content: '// '; color: var(--text-dim); }
+
+.util-panel-body { padding: 16px; }
+
+/* ── FORM GROUPS ────────────────────────────────────────────── */
+.util-form-group { margin-bottom: 14px; }
+
+.util-form-group label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.util-form-group select,
+.util-form-group input[type=number],
+.util-form-group input[type=range] {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  font-family: var(--mono);
+  font-size: 14px;              /* ← standardized: was 14px util / 12px index */
+  padding: 9px 12px;
+  border-radius: 1px;
+  outline: none;
+  transition: border-color .2s;
+  appearance: none;
+}
+
+.util-form-group select:focus,
+.util-form-group input[type=number]:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan-dim);
+}
+
+.util-form-group select option { background: #101720; }
+
+/* range inputs reset */
+.util-form-group input[type=range],
+#util-cd-explore {
+  padding: 4px 0; cursor: pointer; height: 28px;
+  background: transparent; border: none;
+  appearance: none; width: 100%; display: block;
+}
+
+.util-form-group input[type=range]::-webkit-slider-track,
+#util-cd-explore::-webkit-slider-track {
+  height: 3px; background: #060a0e; border-radius: 2px;
+  box-shadow: inset 0 1px 2px #000000cc, inset 0 0 0 1px #000000aa;
+}
+
+.util-form-group input[type=range]::-webkit-slider-thumb,
+#util-cd-explore::-webkit-slider-thumb {
+  appearance: none; width: 14px; height: 14px;
+  background: var(--cyan); border-radius: 0;
+  transform: rotate(45deg); cursor: pointer;
+  box-shadow: var(--glow-cyan); margin-top: -5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RANK BADGES
+   Using CSS custom property --rank-color for DRY rank colours.
+═══════════════════════════════════════════════════════════════ */
+.rank-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border: 1px solid;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .06em; border-radius: 1px;
+  cursor: pointer; transition: all .15s;
+}
+
+.rank-badge.iron     { --rank-color: #7a6a5a; }
+.rank-badge.bronze   { --rank-color: #cd7f32; }
+.rank-badge.silver   { --rank-color: #a8a9aa; }
+.rank-badge.gold     { --rank-color: #ffd700; }
+.rank-badge.plat     { --rank-color: #3ad6d6; }
+.rank-badge.diamond  { --rank-color: #a78bfa; }
+.rank-badge.ascend   { --rank-color: #34d399; }
+.rank-badge.immortal { --rank-color: var(--red); }
+.rank-badge.radiant  { --rank-color: var(--yellow); }
+
+/* apply --rank-color once, shared by all tiers */
+.rank-badge.iron, .rank-badge.bronze, .rank-badge.silver,
+.rank-badge.gold, .rank-badge.plat,  .rank-badge.diamond,
+.rank-badge.ascend, .rank-badge.immortal, .rank-badge.radiant {
+  border-color: var(--rank-color);
+  color: var(--rank-color);
+}
+
+.rank-badge.active { background: var(--rank-color); color: var(--bg) !important; }
+
+.rank-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   UTIL COMPONENT LIBRARY
+   Shared between index.html (iframe host) and util.html.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── MAIN CONTENT AREA ──────────────────────────────────────── */
+.util-main { padding: 24px; display: flex; flex-direction: column; gap: 22px; overflow: auto; }
+
+/* ── SECTION TITLES ─────────────────────────────────────────── */
+.util-section-title {
+  font-family: var(--display); font-size: 12px; letter-spacing: .18em;
+  color: var(--text-dim); text-transform: uppercase;
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.util-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── STAT CARDS ─────────────────────────────────────────────── */
+.util-stat-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+
+.util-stat-card {
+  border: 1px solid var(--border); background: var(--panel);
+  padding: 18px 16px; position: relative; overflow: hidden;
+}
+.util-stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent, var(--cyan));
+}
+.util-stat-card .label  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+.util-stat-card .value  { font-family: var(--display); font-size: 32px; font-weight: 700; color: var(--accent, var(--cyan)); line-height: 1; }
+.util-stat-card .value span { font-size: 15px; color: var(--text-dim); font-family: var(--mono); font-weight: 400; }
+.util-stat-card .sub    { font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin-top: 7px; }
+
+/* ── TIMELINE / CANVAS WRAPPERS ─────────────────────────────── */
+.util-timeline-wrap        { border: 1px solid var(--border); background: var(--panel); padding: 22px; }
+.util-timeline-canvas-wrap { position: relative; overflow: hidden; }
+
+/* ── LEGEND ─────────────────────────────────────────────────── */
+.util-phase-legend  { display: flex; gap: 22px; margin-bottom: 16px; flex-wrap: wrap; }
+.util-legend-item   { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 13px; color: var(--text); }
+.util-legend-swatch { width: 24px; height: 3px; border-radius: 1px; }
+
+/* ── CHARGE GRID ────────────────────────────────────────────── */
+.util-charge-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.util-charge-panel { border: 1px solid var(--border); background: var(--panel); padding: 20px; }
+.util-charge-title { font-family: var(--display); font-size: 12px; letter-spacing: .15em; color: var(--text-bright); margin-bottom: 16px; text-transform: uppercase; }
+
+/* ── CHARGE BARS ────────────────────────────────────────────── */
+.util-charge-bar-wrap  { margin: 12px 0; }
+.util-charge-bar-label { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 13px; color: var(--text); margin-bottom: 5px; }
+.util-charge-bar-track { height: 10px; background: var(--bg3); border: 1px solid var(--border); position: relative; }
+.util-charge-bar-fill  { height: 100%; transition: width .4s ease; position: relative; }
+.util-charge-bar-fill::after { content: ''; position: absolute; right: 0; top: -2px; bottom: -2px; width: 2px; background: white; opacity: .8; }
+
+/* ── SCENARIO TABLE ─────────────────────────────────────────── */
+.util-scenario-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 14px; }
+.util-scenario-table th {
+  text-align: left; padding: 11px 16px; font-size: 11px; letter-spacing: .1em;
+  color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border);
+  font-weight: 400; background: var(--bg3);
+}
+.util-scenario-table td          { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+.util-scenario-table tr:last-child td { border-bottom: none; }
+.util-scenario-table tr:hover td { background: #ffffff07; }
+
+/* ── CHARGE COUNT INDICATORS ────────────────────────────────── */
+.charge-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: 1px solid;
+  font-family: var(--display); font-size: 14px; font-weight: 700;
+}
+.charge-count.zero  { border-color: var(--red-dim);      color: var(--red); }
+.charge-count.one   { border-color: var(--border-bright); color: var(--text-dim); }
+.charge-count.two   { border-color: var(--cyan-dim);      color: var(--cyan); }
+.charge-count.three { border-color: #1a3d1a;              color: var(--green); }
+
+/* ── TOOLTIP ────────────────────────────────────────────────── */
+.util-tooltip {
+  position: fixed; pointer-events: none; z-index: 500;
+  background: #0d1520ee; border: 1px solid var(--border-bright);
+  padding: 10px 14px; font-family: var(--mono); font-size: 12px;
+  color: var(--text); max-width: 200px; backdrop-filter: blur(4px); display: none;
+}
+.util-tooltip.show             { display: block; }
+.util-tooltip .tt-title        { color: var(--cyan); font-size: 11px; margin-bottom: 5px; letter-spacing: .1em; }
+.util-tooltip .tt-row          { display: flex; justify-content: space-between; gap: 16px; color: var(--text-dim); }
+.util-tooltip .tt-row span:last-child { color: var(--text-bright); }
+
+/* ── ACT BANNER ─────────────────────────────────────────────── */
+.util-act-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border: 1px solid var(--border-bright);
+  font-family: var(--mono); font-size: 12px; color: var(--yellow);
+  background: #1a1500; letter-spacing: .1em; width: fit-content;
+}
+
+/* ── DISTRIBUTION BARS ──────────────────────────────────────── */
+.util-dist-wrap { position: relative; }
+.util-dist-bars { display: flex; align-items: flex-end; gap: 2px; height: 80px; }
+.util-dist-bar  {
+  flex: 1; background: var(--cyan-dim); border: 1px solid var(--cyan);
+  border-bottom: none; position: relative; transition: height .3s;
+  cursor: pointer; min-width: 4px;
+}
+.util-dist-bar:hover    { background: var(--cyan); }
+.util-dist-bar.highlight { background: var(--red); border-color: var(--red); }
+
+/* ── INFO TEXT ──────────────────────────────────────────────── */
+.util-info-text    { font-family: var(--mono); font-size: 13px; color: var(--text-dim); line-height: 1.8; }
+.util-info-text .hl { color: var(--cyan); }
+
+/* ── PHASE BREAKDOWN ────────────────────────────────────────── */
+.util-phase-breakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.util-phase-box { border: 1px solid var(--border); padding: 14px; text-align: center; }
+.util-phase-box .ph-val { font-family: var(--display); font-size: 23px; color: var(--text-bright); }
+.util-phase-box .ph-lbl { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: .08em; margin-top: 5px; text-transform: uppercase; }
+
+/* ── RANGE LABELS ───────────────────────────────────────────── */
+.util-range-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+/* ── STATUS DOT ─────────────────────────────────────────────── */
+.util-status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); box-shadow: var(--glow-green);
+  display: inline-block; margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }

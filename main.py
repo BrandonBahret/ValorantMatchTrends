@@ -12,3 +12,11 @@ if __name__ == "__main__":
     OUTPUTS_DIR.mkdir(exist_ok=True)
     app = App()
     app.mainloop()
+    
+    
+    """
+    
+    
+    match_history.js, match-history.html
+    """
+    

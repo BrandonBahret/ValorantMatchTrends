@@ -8,6 +8,10 @@ outputs/
 scripts/
 caches/
 logs/
+caches-old/
+report_data.js
+report_data.json
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

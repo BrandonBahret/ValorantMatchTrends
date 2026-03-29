@@ -1,0 +1,895 @@
+<style>
+/* ── AGENT STATS LAYOUT ─────────────────────────────────── */
+.agents-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: calc(100vh - 52px);
+}
+.agents-sidebar {
+  border-right: 1px solid var(--border);
+  padding: var(--sidebar-padding);
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--panel);
+  position: sticky; top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+}
+.agents-main { display: flex; flex-direction: column; min-height: 0; }
+
+.agents-sidebar .role-filters { flex-direction: column; gap: 3px; }
+.agents-sidebar .role-btn { width: 100%; text-align: left; padding: 7px 10px; }
+
+/* ── TABLE ──────────────────────────────────────────────── */
+.stats-table { overflow-x: auto; overflow-y: auto; height: calc(100vh - 52px); }
+table { width: 100%; border-collapse: collapse; }
+thead { position: sticky; top: 0; z-index: 10; }
+thead tr { background: #0d1520; border-bottom: 1px solid var(--border); }
+th {
+  padding: 11px 14px; text-align: left; font-family: var(--mono); font-weight: 400;
+  font-size: 10px; letter-spacing: .1em; color: var(--text-dim); text-transform: uppercase;
+  white-space: nowrap; user-select: none;
+}
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--text-bright); }
+th.sorted { color: var(--cyan); }
+th.sorted.desc::after { content: ' ▼'; font-size: 8px; }
+th.sorted.asc::after  { content: ' ▲'; font-size: 8px; }
+tbody tr.agent-row { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+tbody tr.agent-row:hover { background: rgba(0,212,255,.04); }
+tbody tr.agent-row.expanded { background: rgba(0,212,255,.07); border-bottom-color: var(--cyan-dim); }
+td { padding: 11px 14px; color: var(--text); vertical-align: middle; }
+.agent-cell { display: flex; align-items: center; gap: 10px; }
+.agent-icon { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--red); object-fit: cover; flex-shrink: 0; }
+.agent-name { font-weight: 700; font-size: 1.05em; color: var(--text-bright); }
+.agent-role { font-family: var(--mono); font-size: 9px; color: var(--red); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.expand-caret { display: inline-block; font-size: 9px; color: var(--text-dim); margin-left: 5px; transition: transform .2s; vertical-align: middle; }
+tr.expanded .expand-caret { transform: rotate(90deg); }
+.stat-num { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.pct { color: #00d4aa; }
+.kda-val { color: var(--yellow); }
+
+.role-header-row td {
+  background: linear-gradient(90deg, rgba(255,70,85,.18) 0%, rgba(255,70,85,.06) 100%);
+  padding: 7px 14px 7px 18px; font-family: var(--mono); font-size: 10px; color: var(--red);
+  text-transform: uppercase; letter-spacing: .18em;
+  border-top: 1px solid rgba(255,70,85,.45); border-bottom: 1px solid rgba(255,70,85,.2);
+  box-shadow: inset 3px 0 0 var(--red);
+}
+
+.util-sort-btn:hover { color: var(--text-bright) !important; border-color: var(--text-dim) !important; }
+.util-sort-btn.active-inv { color: var(--cyan) !important; border-color: var(--cyan) !important; background: var(--cyan-dim) !important; }
+.util-sort-btn.active-ult { color: var(--red) !important; border-color: var(--red) !important; background: rgba(255,70,85,.08) !important; }
+
+.util-mini { display: flex; flex-direction: column; gap: 3px; min-width: 96px; }
+.util-mini-row { display: flex; align-items: center; gap: 5px; }
+.um-lbl { width: 14px; height: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.um-lbl img { width: 14px; height: 14px; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.75; }
+.um-lbl-txt { font-family: var(--mono); font-size: 9px; text-align: center; line-height: 14px; }
+.um-track { flex: 1; height: 3px; background: var(--border); position: relative; }
+.um-fill { height: 100%; position: absolute; top: 0; left: 0; }
+.um-val { font-family: var(--mono); font-size: 9px; color: var(--text-dim); width: 28px; text-align: right; }
+
+/* Clickable CPR rows in accordion */
+.cpr-row { cursor: pointer; border-radius: 2px; transition: background .12s; padding: 2px 4px; margin: 0 -4px; }
+.cpr-row:hover { background: rgba(255,255,255,.04); }
+.cpr-row.util-selected { background: rgba(0,212,255,.08); outline: 1px solid rgba(0,212,255,.25); }
+
+/* Ability detail panel */
+.util-detail-panel {
+  margin-top: 14px; border: 1px solid var(--border); background: var(--bg3);
+  padding: 12px 14px; display: none;
+  animation: fadeSlideIn .15s ease;
+}
+.util-detail-panel.visible { display: flex; gap: 12px; align-items: flex-start; }
+@keyframes fadeSlideIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.udp-icon { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--panel); }
+.udp-icon img { width: 28px; height: 28px; object-fit: contain; }
+.udp-body { flex: 1; min-width: 0; }
+.udp-name { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--text-bright); margin-bottom: 3px; }
+.udp-slot-badge { font-family: var(--mono); font-size: 9px; padding: 1px 5px; border: 1px solid; margin-right: 5px; letter-spacing: .06em; }
+.udp-cpr { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 6px; }
+.udp-cpr strong { color: var(--text-bright); }
+.udp-desc { font-size: 11px; color: var(--text); line-height: 1.55; margin: 5px 0 4px; opacity: .85; }
+
+.shield-mini { min-width: 88px; }
+.sm-bar { display: flex; height: 5px; width: 100%; margin-bottom: 4px; overflow: hidden; }
+.sm-labels { font-family: var(--mono); font-size: 9px; color: var(--text-dim); display: flex; gap: 7px; }
+
+tr.accordion-row { display: none; }
+tr.accordion-row.open { display: table-row; }
+.accordion-row td { padding: 0; background: var(--bg3); border-bottom: 2px solid var(--border); }
+.acc-content { padding: 18px 20px; }
+.acc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.acc-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.acc-panel { border: 1px solid var(--border); background: var(--panel); padding: 16px; }
+.acc-title { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; color: var(--cyan); margin-bottom: 14px; text-transform: uppercase; display: flex; align-items: center; }
+.acc-title::before { content: '// '; color: var(--text-dim); flex-shrink: 0; }
+.cpr-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.cpr-label { font-family: var(--mono); font-size: 11px; color: var(--text); min-width: 170px; }
+.cpr-slot { font-family: var(--mono); font-size: 9px; color: var(--text-dim); background: var(--bg3); border: 1px solid var(--border); padding: 1px 4px; margin-right: 5px; flex-shrink: 0; }
+.cpr-track { flex: 1; height: 7px; background: var(--border); position: relative; min-width: 40px; }
+.cpr-fill { height: 100%; position: absolute; top: 0; left: 0; transition: width .3s; }
+.cpr-val { font-family: var(--display); font-size: 11px; min-width: 42px; text-align: right; }
+.phase-tabs { display: flex; gap: 3px; margin-bottom: 12px; flex-wrap: wrap; }
+.phase-tab { padding: 4px 10px; font-family: var(--mono); font-size: 10px; border: 1px solid var(--border); cursor: pointer; color: var(--text-dim); background: var(--bg3); transition: all .12s; letter-spacing: .04em; }
+.phase-tab.active { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.phase-pane { display: none; }
+.phase-pane.active { display: block; }
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-name { font-family: var(--mono); font-size: 11px; color: var(--text); min-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 5px; background: var(--border); position: relative; min-width: 40px; }
+.bar-fill { height: 100%; position: absolute; top: 0; left: 0; background: var(--cyan-dim); border-right: 2px solid var(--cyan); transition: width .3s; }
+.bar-pct { font-family: var(--mono); font-size: 10px; color: var(--text-dim); min-width: 38px; text-align: right; }
+.spend-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 12px; }
+.spend-card { border: 1px solid var(--border); padding: 10px 8px; text-align: center; }
+.spend-val { font-family: var(--display); font-size: 14px; color: var(--cyan); }
+.spend-lbl { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 3px; }
+.acc-note { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 10px; line-height: 1.8; }
+
+.role-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.role-btn { padding: 7px 6px; border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all .15s; white-space: nowrap; text-align: center; letter-spacing: .04em; }
+.role-btn.active { border-color: var(--role-col, var(--cyan)); color: var(--role-col, var(--cyan)); background: color-mix(in srgb, var(--role-col, var(--cyan)) 10%, transparent); }
+.checkbox-group { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--cyan); }
+
+.agents-sidebar [data-tip]::after { left: calc(100% + 10px); bottom: auto; top: 50%; transform: translateY(-50%) translateX(4px); max-width: 260px; }
+.agents-sidebar [data-tip]:hover::after { transform: translateY(-50%) translateX(0); }
+.agents-sidebar [data-tip]::before { left: calc(100% + 4px); bottom: auto; top: 50%; transform: translateY(-50%); border: 5px solid transparent; border-right-color: var(--border-bright); border-top-color: transparent; }
+.phase-tabs [data-tip]::after { left: 50%; transform: translateX(-50%) translateY(4px); bottom: calc(100% + 8px); z-index: 9999; }
+.phase-tabs [data-tip]:hover::after { transform: translateX(-50%) translateY(0); }
+.phase-tabs [data-tip]::before { left: 50%; bottom: calc(100% + 3px); border-right-color: transparent; border-top-color: var(--border-bright); }
+
+/* ── UTIL ATK / DEF SPLIT ───────────────────────────────── */
+.util-split-pane {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.util-side-panel {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  padding: 10px 12px;
+}
+.util-side-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.util-side-title .side-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.util-side-title.atk-title { color: #ff6b7a; }
+.util-side-title.def-title { color: #4db8ff; }
+.util-side-title.atk-title .side-dot { background: #ff4655; box-shadow: 0 0 5px #ff465566; }
+.util-side-title.def-title .side-dot { background: #00d4ff; box-shadow: 0 0 5px #00d4ff66; }
+
+.util-split-delta {
+  display: flex; flex-direction: column; gap: 3px; margin-top: 10px;
+  border-top: 1px solid var(--border); padding-top: 8px;
+}
+.util-delta-row {
+  display: flex; align-items: center; gap: 7px;
+}
+.util-delta-lbl {
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  min-width: 52px; flex-shrink: 0;
+}
+.util-delta-bar-wrap {
+  flex: 1; display: flex; align-items: center; gap: 4px; position: relative;
+}
+.util-delta-atk-bar, .util-delta-def-bar {
+  height: 4px; position: absolute; top: 0;
+}
+.util-delta-track {
+  flex: 1; height: 4px; background: var(--border); position: relative; overflow: hidden;
+}
+.util-delta-val {
+  font-family: var(--mono); font-size: 9px; min-width: 42px; text-align: right;
+}
+.delta-pos { color: #ff6b7a; }
+.delta-neg { color: #4db8ff; }
+.delta-neu { color: var(--text-dim); }
+
+/* Mini util with ATK/DEF dual bar */
+.util-mini-split { display: flex; flex-direction: column; gap: 3px; min-width: 110px; }
+.um-dual-track { flex: 1; height: 6px; background: var(--border); position: relative; }
+.um-dual-atk { height: 3px; position: absolute; top: 0; left: 0; }
+.um-dual-def { height: 3px; position: absolute; bottom: 0; left: 0; }
+</style>
+
+<div class="agents-layout">
+  <div class="agents-sidebar">
+    <div class="panel">
+      <div class="panel-hdr">Search</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <div style="position:relative;">
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--text-dim);pointer-events:none;">⌕</span>
+          <input type="text" id="agentSearch" placeholder="Agent name…" style="width:100%;box-sizing:border-box;padding:7px 10px 7px 26px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .2s;border-radius:1px;" oninput="agentsPage.renderTable()" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Role</div>
+      <div class="panel-body" style="padding:10px 12px;"><div id="roleFilters" class="role-grid"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Config</div>
+      <div class="panel-body" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Min Matches</div>
+          <input type="number" id="minMatches" min="0" value="10" step="1" style="width:100%;box-sizing:border-box;" data-tip="Hide agents seen in fewer&#10;than this many matches.&#10;Reduces small-sample noise.">
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Sort By</div>
+          <select id="sortBy" style="width:100%;box-sizing:border-box;">
+            <option value="team_percentage">Team Pick Rate</option>
+            <option value="matches_seen_percentage">Matches Seen %</option>
+            <option value="win_rate">Win Rate</option>
+            <option value="non_mirror_win_rate">Non-Mirror WR</option>
+            <option value="kda">KDA</option>
+            <option value="util_score">Util Investment</option>
+            <option value="ult_cpr">Ult Usage Rate</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">Order</div>
+          <select id="sortOrder" style="width:100%;box-sizing:border-box;">
+            <option value="desc">Desc</option><option value="asc">Asc</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+          <div class="checkbox-group"><input type="checkbox" id="groupByRole"><label for="groupByRole" data-tip="Organise rows into labelled&#10;role sections.">Group by role</label></div>
+          <div class="checkbox-group"><input type="checkbox" id="showUtil" checked><label for="showUtil" data-tip="Show the Util CPR column.">Show util CPR</label></div>
+
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Map</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <select id="agents-sel-map" style="width:100%;box-sizing:border-box;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;" onchange="agentsPage.renderTable()">
+          <option value="all">All Maps</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr">Rank Filter</div>
+      <div class="panel-body" style="padding:10px 12px;">
+        <div class="rank-grid" id="agents-rank-grid"></div>
+        <div id="agents-rank-note" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;display:none;">No rank data in dataset.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="agents-main">
+    <div class="stats-table" id="agents-table-wrap">
+      <table>
+        <thead><tr>
+          <th style="min-width:180px;">Agent</th>
+          <th class="sortable" data-sort="teams" data-tip="Number of distinct teams&#10;that ran this agent at&#10;least once.">Teams</th>
+          <th class="sortable" data-sort="team_percentage" data-tip="% of teams that picked&#10;this agent ÷ total teams.">Pick Rate</th>
+          <th class="sortable" data-sort="matches_seen_percentage" data-tip="% of matches where this&#10;agent appeared on either&#10;team's roster.">Matches %</th>
+          <th class="sortable" data-sort="win_rate" data-tip="Rounds won ÷ total rounds&#10;played across all matches.">Win Rate</th>
+          <th class="sortable" data-sort="non_mirror_win_rate" data-tip="Win rate excluding rounds&#10;where enemy ran same agent.">Non-Mirror WR</th>
+          <th class="sortable" data-sort="kda" data-tip="(Kills + Assists) ÷ Deaths.&#10;Averaged per player.">KDA</th>
+          <th id="col-util" style="min-width:130px;" data-tip="Casts-per-round for each&#10;ability slot (C/Q/E/X).">
+            <span style="display:flex;align-items:center;gap:6px;">Util CPR
+              <span style="display:flex;gap:3px;">
+                <span class="util-sort-btn" data-sort="util_score" style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;" data-tip="Util Investment: C+Q+E+X CPR sum.">INV</span>
+                <span class="util-sort-btn" data-sort="ult_cpr" style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;" data-tip="Ult Usage Rate: X-slot CPR.">ULT</span>
+              </span>
+            </span>
+          </th>
+        </tr></thead>
+        <tbody id="agentTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+window.agentsPage = (function() {
+'use strict';
+var RD = window._RD;
+var agentsData = RD.agents, reprData = RD.repr, metaData = RD.meta, summary = RD.summary;
+
+// ── STATS FUSION ─────────────────────────────────────────────────────────────
+// ── MATHEMATICALLY CORRECT STAT AGGREGATION ─────────────────────────────────
+// Avoids the average-of-averages fallacy by recomputing rates from raw counts.
+// win_rate        = Σwins / Σpicks
+// kda             = Σ(kills+assists) / Σdeaths
+// non_mirror_wr   = Σnon_mirror_wins / Σnon_mirror_picks
+// team_percentage = Σteams / Σtotal_teams
+// matches_seen_%  = Σmatches_seen / Σtotal_teams  ← total_teams, NOT total_matches
+//                   (total_matches == matches_seen per agent → always ~100%)
+// utility (CPR)   = simple mean across leaves (already a per-round rate)
+// by_phase        = count-weighted merge: Σcount / Σsample_rounds per weapon/shield
+
+// Fuse by_phase dicts from multiple leaf nodes.
+// Invariant: buy_rate_pct = count / sample_rounds * 100 -- so sum counts & sample_rounds.
+function fuseByPhase(nodes) {
+  var acc = {};
+  nodes.forEach(function(n) {
+    if (!n || !n.by_phase) return;
+    Object.keys(n.by_phase).forEach(function(ph) {
+      var src = n.by_phase[ph];
+      if (!acc[ph]) acc[ph] = { weapons: {}, shields: {}, sample_rounds: 0 };
+      var dst = acc[ph];
+      dst.sample_rounds += (src.sample_rounds || 0);
+      Object.keys(src.weapons || {}).forEach(function(w) {
+        dst.weapons[w] = (dst.weapons[w] || 0) + (src.weapons[w].count || 0);
+      });
+      Object.keys(src.shields || {}).forEach(function(s) {
+        dst.shields[s] = (dst.shields[s] || 0) + (src.shields[s].count || 0);
+      });
+    });
+  });
+  // Recompute buy_rate_pct from accumulated counts
+  var out = {};
+  Object.keys(acc).forEach(function(ph) {
+    var d = acc[ph], sr = d.sample_rounds;
+    out[ph] = { sample_rounds: sr, weapons: {}, shields: {} };
+    Object.keys(d.weapons).forEach(function(w) {
+      out[ph].weapons[w] = { count: d.weapons[w], buy_rate_pct: sr > 0 ? +(d.weapons[w] / sr * 100).toFixed(2) : 0 };
+    });
+    Object.keys(d.shields).forEach(function(s) {
+      out[ph].shields[s] = { count: d.shields[s], buy_rate_pct: sr > 0 ? +(d.shields[s] / sr * 100).toFixed(2) : 0 };
+    });
+  });
+  return out;
+}
+
+function fuseStats(nodes) {
+  var valid = nodes.filter(Boolean);
+  if (!valid.length) return null;
+  if (valid.length === 1) return Object.assign({}, valid[0]);
+
+  var sumWins=0, sumMatches=0, sumKills=0, sumAssists=0, sumDeaths=0;
+  var sumNMWins=0, sumNMPicks=0, sumPicks=0, sumTeams=0, sumTotalTeams=0;
+  var sumTotalMatches=0, sumTotalPlayers=0;
+  var utilSum={c:0,q:0,e:0,x:0}, utilCount=0;
+
+  valid.forEach(function(n) {
+    sumWins        += (n.wins                    || 0);
+    sumMatches     += (n.matches_seen            || 0);
+    sumKills       += (n.kills                   || 0);
+    sumAssists     += (n.assists                 || 0);
+    sumDeaths      += (n.deaths                  || 0);
+    sumNMWins      += (n.non_mirror_wins         || 0);
+    sumNMPicks     += (n.non_mirror_picks        || 0);
+    sumPicks       += (n.picks                   || 0);
+    sumTeams       += (n.teams                   || 0);
+    sumTotalTeams  += (n.total_teams             || 0);
+    sumTotalMatches+= (n.total_matches           || 0);
+    sumTotalPlayers+= (n.total_players_in_slice  || 0);
+    if (n.utility) {
+      ['c','q','e','x'].forEach(function(s){ utilSum[s] += (n.utility[s]||0); });
+      utilCount++;
+    }
+  });
+
+  var out = {};
+  out.picks               = sumPicks;
+  out.teams               = sumTeams;
+  out.non_mirror_picks    = sumNMPicks;
+  out.matches_seen        = sumMatches;
+  out.wins                = sumWins;
+  out.non_mirror_wins     = sumNMWins;
+  out.kills               = sumKills;
+  out.assists             = sumAssists;
+  out.deaths              = sumDeaths;
+  out.total_teams         = sumTotalTeams;
+  out.total_matches       = sumTotalMatches;
+  out.total_players_in_slice = sumTotalPlayers;
+
+  out.win_rate             = sumPicks   > 0 ? (sumWins / sumPicks * 100) : null;
+  out.non_mirror_win_rate  = sumNMPicks > 0 ? (sumNMWins / sumNMPicks * 100) : null;
+  out.kda                  = sumDeaths  > 0 ? ((sumKills + sumAssists) / sumDeaths) : null;
+  out.team_percentage      = sumTotalTeams > 0 ? (sumPicks / sumTotalTeams * 100) : null;
+  out.matches_seen_percentage = sumTotalTeams > 0 ? (sumMatches / sumTotalTeams * 100) : null;
+  out.pick_rate            = sumTotalPlayers > 0 ? (sumPicks / sumTotalPlayers * 100) : null;
+
+  // Utility CPR: simple mean (per-round rate; safe to average linearly)
+  if (utilCount > 0) {
+    out.utility = {};
+    ['c','q','e','x'].forEach(function(s){ out.utility[s] = utilSum[s] / utilCount; });
+  } else {
+    out.utility = null;
+  }
+
+  // by_phase: count-weighted merge so buy_rate_pct = Σcount / Σsample_rounds
+  out.by_phase = fuseByPhase(valid);
+
+  return out;
+}
+
+
+
+// Resolve stat node(s) for an agent given current map+rank filter, fuse with
+// count-weighted math to avoid average-of-averages. No .overall node expected.
+function resolveAgentStats(agentName, mapFilter, selRanks, isAllRanks) {
+  var tree = metaData.agent_tree;
+  if (!tree || !tree[agentName]) return null;
+  var ag = tree[agentName];
+  var hasMap  = mapFilter && mapFilter !== 'all';
+  var hasRank = selRanks && selRanks.length > 0 && !isAllRanks;
+  var nodes = [];
+
+  if (hasMap && hasRank) {
+    var mapNode = ag.by_map && ag.by_map[mapFilter];
+    if (!mapNode) return null;
+    selRanks.forEach(function(r){ nodes.push(mapNode.by_rank && mapNode.by_rank[r] || null); });
+  } else if (hasMap) {
+    var mapNode = ag.by_map && ag.by_map[mapFilter];
+    if (!mapNode) return null;
+    Object.values(mapNode.by_rank || {}).forEach(function(n){ nodes.push(n); });
+  } else if (hasRank) {
+    Object.values(ag.by_map || {}).forEach(function(mn) {
+      selRanks.forEach(function(r){ nodes.push(mn.by_rank && mn.by_rank[r] || null); });
+    });
+  } else {
+    // All maps + all ranks: every leaf
+    Object.values(ag.by_map || {}).forEach(function(mn) {
+      Object.values(mn.by_rank || {}).forEach(function(n){ nodes.push(n); });
+    });
+  }
+
+  return fuseStats(nodes);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// util_score and ult_cpr are computed post-merge in renderTable, where
+// a.utility comes from the resolved stat node (agent_tree overall/by_rank).
+
+var avgRounds = (summary && (summary.avg_rounds_per_match || summary.avg_match_length || summary.avg_rounds))
+             || (metaData && (metaData.avg_rounds_per_match || metaData.avg_match_length || metaData.avg_rounds))
+             || 24;
+
+var sortKey='team_percentage', sortDir='desc', groupRole=false, showUtil=true, showUtilSplit=false;
+var activeRoles=new Set(), expandedSet=new Set();
+var agentsRanks=new Set(); // populated by rank-init IIFE below
+var agentsRanksAll=new Set(); // all ranks present in data (for isAllRanks check)
+var agentsMap='all';
+var SLOT_COL={c:'#00d4ff',q:'#ffe84d',e:'#39ff14',x:'#ff4655'}, CPR_MAX=2.0;
+
+function wrStyle(v) {
+  if(v>=55) return 'color:#00d4aa;text-shadow:0 0 8px #00d4aa44;';
+  if(v>=50.5) return 'color:#00d4aa;'; if(v>=45) return 'color:var(--text-bright);';
+  return 'color:var(--red);';
+}
+
+var ROLE_COL={'Duelist':'#ff4655','Initiator':'#ffe84d','Controller':'#00d4ff','Sentinel':'#39ff14'};
+
+function initRoleFilters() {
+  var ORDER=['Duelist','Initiator','Controller','Sentinel'];
+  var roles=Array.from(new Set(agentsData.map(function(a){return a.role;}))).sort(function(a,b){
+    var ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);
+    if(ia===-1&&ib===-1) return a.localeCompare(b); if(ia===-1) return 1; if(ib===-1) return -1; return ia-ib;
+  });
+  var el=document.getElementById('roleFilters');
+  roles.forEach(function(role){
+    activeRoles.add(role);
+    var btn=document.createElement('button'); btn.className='role-btn active'; btn.textContent=role; btn.dataset.role=role;
+    btn.style.setProperty('--role-col',ROLE_COL[role]||'var(--cyan)');
+    btn.onclick=function(){if(activeRoles.has(role)){activeRoles.delete(role);btn.classList.remove('active');}else{activeRoles.add(role);btn.classList.add('active');}renderTable();};
+    el.appendChild(btn);
+  });
+}
+
+function utilMiniHTML(a) {
+  // utility lives on the stat node (a.utility); ability icons live in a.loadout
+  var u = a && a.utility;
+  var loadout = a && a.loadout;
+  if(!u) return '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">—</span>';
+  var ai=loadout&&loadout.ability_icons||{}, html='<div class="util-mini">';
+  ['c','q','e','x'].forEach(function(s){
+    var pct=Math.min(100,(u[s]/CPR_MAX)*100), isUlt=s==='x', dimmed=sortKey==='ult_cpr'&&!isUlt, col=SLOT_COL[s];
+    var iconUrl=ai[s]||'';
+    var hue=isUlt?'320':'160';
+    var lblInner=iconUrl
+      ? '<img src="'+iconUrl+'" alt="'+s.toUpperCase()+'" style="width:14px;height:14px;object-fit:contain;filter:brightness(0) invert(1) sepia(1) saturate(6) hue-rotate('+hue+'deg);opacity:'+(dimmed?'0.3':'0.82')+';display:block;" onerror="this.style.display=&#39;none&#39;">'
+      : '<span style="font-family:var(--mono);font-size:9px;color:'+col+';">'+s.toUpperCase()+'</span>';
+    html+='<div class="util-mini-row"><span class="um-lbl">'+lblInner+'</span><div class="um-track"><div class="um-fill" style="width:'+pct+'%;background:'+col+';opacity:'+(dimmed?'0.3':isUlt?'0.55':'0.75')+';"></div></div><span class="um-val">'+u[s].toFixed(3)+'</span></div>';
+  });
+  return html+'</div>';
+}
+
+var SHIELD_STYLE={'Heavy Armor':{col:'#00d4ff',bg:'#003d4d',abbr:'H'},'Light Armor':{col:'#ffe84d',bg:'#1f1800',abbr:'L'},'Regen Shield':{col:'#a78bfa',bg:'#1a1030',abbr:'R'},'(none)':{col:'#6a8aa8',bg:'#0d1520',abbr:'N'}};
+var SHIELD_KEYS=['Heavy Armor','Light Armor','Regen Shield','(none)'];
+function shieldEntries(sh){sh=sh||{};var keys=SHIELD_KEYS.slice();Object.keys(sh).forEach(function(k){if(keys.indexOf(k)===-1)keys.push(k);});keys.sort(function(a,b){if(a==='(none)')return 1;if(b==='(none)')return -1;return (sh[b]?sh[b].buy_rate_pct:0)-(sh[a]?sh[a].buy_rate_pct:0);});return keys.map(function(n){var s=SHIELD_STYLE[n]||{col:'var(--text-dim)',bg:'#1a2d3d',abbr:n.charAt(0).toUpperCase()};return {name:n,pct:sh[n]?sh[n].buy_rate_pct:0,col:s.col,bg:s.bg,abbr:s.abbr};});}
+function shieldBarsHTML(sh){var e=shieldEntries(sh),mx=Math.max.apply(null,e.map(function(x){return x.pct;}).concat([0.01]));return e.map(function(x){var w=mx>0?(x.pct/mx*100):0;return '<div class="bar-row"><div class="bar-name">'+x.name+'</div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;background:'+x.col+'55;border-right:2px solid '+x.col+';"></div></div><div class="bar-pct" style="color:'+x.col+'">'+x.pct.toFixed(1)+'%</div></div>';}).join('');}
+
+var PRI=new Set(['Vandal','Phantom','Guardian','Bulldog','Spectre','Stinger','Operator','Outlaw','Marshal','Judge','Bucky','Ares','Odin']);
+var SEC=new Set(['Classic','Shorty','Frenzy','Ghost','Sheriff','Bandit']), SEC_KEYS=['Classic','Ghost','Sheriff','Frenzy','Shorty','Bandit'];
+function normName(n){if(!n)return 'Classic';var x=n.trim().toLowerCase().replace(/\s+/g,' ');if(/^\(?none(\s*\/\s*classic)?\)?$/.test(x)||x==='(classic)'||x==='classic (default)')return 'Classic';return n.trim();}
+function cls(n){return SEC.has(normName(n))?'secondary':'primary';}
+function normObj(o){var out={};Object.entries(o||{}).forEach(function(e){var k=normName(e[0]);out[k]=out[k]?{buy_rate_pct:(out[k].buy_rate_pct||0)+(e[1].buy_rate_pct||0)}:e[1];});return out;}
+function splitW(o){o=normObj(o);var p=[],sm={};Object.entries(o).forEach(function(e){if(cls(e[0])==='secondary')sm[e[0]]=e[1];else p.push(e);});var s=SEC_KEYS.map(function(n){return [n,sm[n]||{buy_rate_pct:0}];});Object.entries(o).forEach(function(e){if(cls(e[0])==='secondary'&&SEC_KEYS.indexOf(e[0])===-1)s.push(e);});s.sort(function(a,b){return (b[1].buy_rate_pct||0)-(a[1].buy_rate_pct||0);});return {primary:p,secondary:s};}
+function splitWRaw(o){o=normObj(o);var p=[],s=[];Object.entries(o).forEach(function(e){if(cls(e[0])==='secondary')s.push(e);else p.push(e);});s.sort(function(a,b){return (b[1].buy_rate_pct||0)-(a[1].buy_rate_pct||0);});return {primary:p,secondary:s};}
+function barRow(n,p,mp,cs){var w=mp>0?(p/mp*100):0,f=cs||'background:var(--cyan-dim);border-right:2px solid var(--cyan);';return '<div class="bar-row"><div class="bar-name">'+n+'</div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;'+f+'"></div></div><div class="bar-pct">'+p.toFixed(1)+'%</div></div>';}
+function wepBars(e,ac){if(!e.length)return '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data</span>';var rt=e.reduce(function(s,x){return s+(x[1].buy_rate_pct||0);},0),t=rt>0?rt:1;var nm=e.map(function(x){return [x[0],(x[1].buy_rate_pct||0)/t*100];});var mp=Math.max.apply(null,nm.map(function(x){return x[1];}).concat([0.01]));return nm.map(function(x){return '<div style="'+(x[1]===0?'opacity:.35;':'')+'">'+barRow(x[0],x[1],mp,ac||'')+'</div>';}).join('');}
+function phWepBars(e,ac){if(!e.length)return '<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">No data</span>';var mp=Math.max.apply(null,e.map(function(x){return x[1].buy_rate_pct||0;}).concat([0.01]));return e.map(function(x){var p=x[1].buy_rate_pct||0,w=mp>0?(p/mp*100):0,f=ac||'background:var(--cyan-dim);border-right:2px solid var(--cyan);';return '<div class="bar-row"><div class="bar-name">'+x[0]+'</div><div class="bar-track"><div class="bar-fill" style="width:'+w+'%;'+f+'"></div></div><div class="bar-pct">'+p.toFixed(1)+'%</div></div>';}).join('');}
+function infoIcon(tip){return '<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--text-dim);font-family:var(--mono);font-size:8px;color:var(--text-dim);cursor:default;margin-left:6px;flex-shrink:0;vertical-align:middle;line-height:1;position:relative;" data-tip="'+tip+'">i</span>';}
+
+function phasePane(pd){
+  pd=pd||{};var sp=splitWRaw(pd.weapons||{}),se=sp.secondary.length>0?sp.secondary:[['Classic',{buy_rate_pct:100}]];
+  var lbl=function(l,c){return '<div style="font-family:var(--mono);font-size:9px;color:'+c+';letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;margin-top:10px;opacity:.8;">'+l+'</div>';};
+  var s=pd.spend||{},spH=s.sample_rounds?'<div class="spend-cards"><div class="spend-card"><div class="spend-val">'+Math.round(s.avg_spent||0).toLocaleString()+'</div><div class="spend-lbl">Avg Spent</div></div><div class="spend-card"><div class="spend-val">'+Math.round(s.avg_loadout_value||0).toLocaleString()+'</div><div class="spend-lbl">Loadout</div></div><div class="spend-card"><div class="spend-val">'+Math.round(s.avg_remaining||0).toLocaleString()+'</div><div class="spend-lbl">Remaining</div></div></div>':'<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:10px;">No economy data.</div>';
+  return lbl('Primary','var(--cyan)')+'<div>'+phWepBars(sp.primary.slice(0,5),'background:rgba(0,212,255,.18);border-right:2px solid var(--cyan);')+'</div>'+lbl('Secondary','var(--yellow)')+'<div>'+phWepBars(se.slice(0,5),'background:rgba(255,232,77,.15);border-right:2px solid var(--yellow);')+'</div>'+'<div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Shields</div>'+shieldBarsHTML(pd.shields||{})+spH;
+}
+
+function buildUtilSplitHTML(a, uid) {
+  var L = a.loadout, u = a.utility, an = L.ability_names||{}, ai = L.ability_icons||{}, ad = L.ability_descriptions||{};
+  var detailPanelId = 'udp-split-' + uid;
+
+  // Try to find per-side data. Supports two layouts:
+  //   u.by_side = { atk: {c,q,e,x}, def: {c,q,e,x} }   (preferred)
+  //   u.c_atk, u.c_def, u.q_atk, u.q_def ...             (flat keys)
+  //   Fallback: no side data → show a notice
+  var hasSide = false, atkU = {}, defU = {};
+  if (u.by_side && u.by_side.atk && u.by_side.def) {
+    atkU = u.by_side.atk; defU = u.by_side.def; hasSide = true;
+  } else {
+    ['c','q','e','x'].forEach(function(s){
+      if (u[s+'_atk'] != null && u[s+'_def'] != null) {
+        atkU[s] = u[s+'_atk']; defU[s] = u[s+'_def']; hasSide = true;
+      } else {
+        // Synthesise a plausible split: assume uniform distribution (equal ATK/DEF)
+        // This ensures the UI renders even when only aggregate data is present
+        atkU[s] = u[s]; defU[s] = u[s];
+      }
+    });
+  }
+
+  var umax = Math.max.apply(null, ['c','q','e','x'].map(function(s){ return Math.max(atkU[s]||0, defU[s]||0); }).concat([0.01, 2.0]));
+
+  function sideRows(sideU, sideKey) {
+    var rows = '';
+    ['c','q','e','x'].forEach(function(s){
+      var val = sideU[s] || 0;
+      var p = Math.min(100, (val / umax) * 100);
+      var col = SLOT_COL[s];
+      var iconUrl = ai[s] || '';
+      var iconHtml = iconUrl
+        ? '<img src="'+iconUrl+'" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75;margin-right:2px;vertical-align:middle;" onerror="this.style.display=\'none\'">'
+        : '';
+      var safeName = (an[s]||s.toUpperCase()).replace(/"/g,'&quot;');
+      var safeIcon = iconUrl.replace(/"/g,'&quot;');
+      var safeDesc = (ad[s]||'').replace(/"/g,'&quot;');
+      var approxCasts = Math.round(val * avgRounds);
+      rows += '<div class="cpr-row"'
+        +' data-slot="'+s+'"'
+        +' data-panel="'+detailPanelId+'"'
+        +' data-name="'+safeName+'"'
+        +' data-icon="'+safeIcon+'"'
+        +' data-cpr="'+val.toFixed(4)+'"'
+        +' data-approx="'+approxCasts+'"'
+        +' data-col="'+col+'"'
+        +' data-desc="'+safeDesc+'"'
+        +' onclick="agentsPage.showUtilDetail(this)">'
+        +'<div class="cpr-label"><span class="cpr-slot" style="color:'+col+'">'+iconHtml+s.toUpperCase()+'</span>'+(an[s]||s.toUpperCase())+'</div>'
+        +'<div class="cpr-track"><div class="cpr-fill" style="width:'+p+'%;background:'+col+';opacity:.8;"></div></div>'
+        +'<div class="cpr-val" style="color:'+col+'">'+val.toFixed(3)+'<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:4px;font-weight:400;">≈'+approxCasts+'</span></div>'
+        +'</div>';
+    });
+    return rows;
+  }
+
+  var atkHTML = sideRows(atkU, 'atk');
+  var defHTML = sideRows(defU, 'def');
+
+  // Delta comparison bar
+  var deltaHTML = '<div class="util-split-delta"><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">ATK vs DEF Delta</div>';
+  ['c','q','e','x'].forEach(function(s){
+    var av = atkU[s]||0, dv = defU[s]||0, diff = av - dv;
+    var col = SLOT_COL[s];
+    var maxV = Math.max(av, dv, 0.001);
+    var atkW = (av/umax*100).toFixed(1), defW = (dv/umax*100).toFixed(1);
+    var deltaClass = Math.abs(diff) < 0.01 ? 'delta-neu' : (diff > 0 ? 'delta-pos' : 'delta-neg');
+    var deltaLabel = Math.abs(diff) < 0.001 ? '=' : (diff > 0 ? '+' : '') + diff.toFixed(3);
+    var iconUrl = ai[s]||'';
+    var iconInner = iconUrl
+      ? '<img src="'+iconUrl+'" style="width:10px;height:10px;object-fit:contain;filter:brightness(0) invert(1);opacity:.6;vertical-align:middle;" onerror="this.style.display=\'none\'">'
+      : '<span style="color:'+col+';font-family:var(--mono);font-size:8px;">'+s.toUpperCase()+'</span>';
+    deltaHTML += '<div class="util-delta-row">'
+      +'<div class="util-delta-lbl">'+iconInner+'</div>'
+      +'<div style="flex:1;height:8px;background:var(--border);position:relative;overflow:hidden;">'
+        +'<div style="position:absolute;top:0;left:0;height:4px;width:'+atkW+'%;background:#ff465588;border-right:1px solid #ff4655;transition:width .3s;"></div>'
+        +'<div style="position:absolute;bottom:0;left:0;height:4px;width:'+defW+'%;background:#00d4ff55;border-right:1px solid #00d4ff;transition:width .3s;"></div>'
+      +'</div>'
+      +'<div class="util-delta-val '+deltaClass+'">'+deltaLabel+'</div>'
+      +'</div>';
+  });
+  deltaHTML += (!hasSide ? '<div style="font-family:var(--mono);font-size:9px;color:var(--yellow);opacity:.7;margin-top:6px;">⚠ No side-split data — aggregate CPR reflected equally on both sides.</div>' : '')
+    + '</div>';
+
+  var splitHTML = '<div class="util-split-pane">'
+    +'<div class="util-side-panel">'
+      +'<div class="util-side-title atk-title"><span class="side-dot"></span>ATK Side</div>'
+      + atkHTML
+    +'</div>'
+    +'<div class="util-side-panel">'
+      +'<div class="util-side-title def-title"><span class="side-dot"></span>DEF Side</div>'
+      + defHTML
+    +'</div>'
+  +'</div>'
+  + deltaHTML
+  +'<div id="'+detailPanelId+'" class="util-detail-panel"></div>'
+  +'<div class="acc-note">ATK/DEF casts-per-round split. Delta = ATK − DEF CPR.<br><span style="color:var(--red);">■</span> ATK &nbsp;<span style="color:var(--cyan);">■</span> DEF &nbsp;in delta bars.</div>';
+
+  return splitHTML;
+}
+
+function buildAccordion(a){
+  if(!a.loadout) return '<div style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim);">No loadout data for '+a.name+'.</div>';
+  var L=a.loadout,u=a.utility,an=L.ability_names||{},ai=L.ability_icons||{},ad=L.ability_descriptions||{},uid='acc'+a.name.replace(/[^a-z0-9]/gi,'');
+  if(!u) return '<div style="padding:20px;font-family:var(--mono);font-size:12px;color:var(--text-dim);">No utility data for '+a.name+'.</div>';
+  var umax=Math.max(u.c,u.q,u.e,u.x,0.01),utilH='';
+  var detailPanelId='udp-'+uid;
+
+  if (showUtilSplit) {
+    utilH = buildUtilSplitHTML(a, uid);
+  } else {
+    ['c','q','e','x'].forEach(function(s){
+    var p=Math.min(100,(u[s]/Math.max(umax,2.0))*100);
+    var col=SLOT_COL[s];
+    var iconUrl=ai[s]||'';
+    var safeIcon=iconUrl.replace(/"/g,'&quot;');
+    var safeName=(an[s]||s.toUpperCase()).replace(/"/g,'&quot;');
+    var iconHtml=iconUrl
+      ? '<img src="'+iconUrl+'" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75;margin-right:2px;vertical-align:middle;" onerror="this.style.display=&#39;none&#39;">'
+      : '';
+    var safeDesc=(ad[s]||'').replace(/"/g,'&quot;');
+    var approxCasts = Math.round(u[s] * avgRounds);
+    utilH+='<div class="cpr-row"'
+      +' data-slot="'+s+'"'
+      +' data-panel="'+detailPanelId+'"'
+      +' data-name="'+safeName+'"'
+      +' data-icon="'+safeIcon+'"'
+      +' data-cpr="'+u[s].toFixed(4)+'"'
+      +' data-approx="'+approxCasts+'"'
+      +' data-col="'+col+'"'
+      +' data-desc="'+safeDesc+'"'
+      +' onclick="agentsPage.showUtilDetail(this)">'
+      +'<div class="cpr-label"><span class="cpr-slot" style="color:'+col+'">'+iconHtml+s.toUpperCase()+'</span>'+(an[s]||s.toUpperCase())+'</div>'
+      +'<div class="cpr-track"><div class="cpr-fill" style="width:'+p+'%;background:'+col+';opacity:.8;"></div></div>'
+      +'<div class="cpr-val" style="color:'+col+'">'+u[s].toFixed(3)+'<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:5px;font-weight:400;">≈'+approxCasts+'</span></div>'
+      +'</div>';
+    });
+  utilH+='<div id="'+detailPanelId+'" class="util-detail-panel"></div>';
+  utilH+='<div class="acc-note">Casts-per-round averaged across all matches.<br>CPR &gt; 1.0 = multi-charge ability used more than once per round.<br><span style="color:var(--text-dim);opacity:.7;">≈N = rounded casts per match (CPR × '+Math.round(avgRounds)+' avg rounds).</span><br><span style="color:var(--cyan);opacity:.7;">Click a row above for details.</span></div>';
+  } // end else (no split)
+
+  var phases=['Pistol','Eco','Force','Full Buy','2nd Round'];
+  var PTIPS={'Pistol':'Round 1 &amp; 13 only.\nAll players start with 800 cr\n— no rifle purchases possible.','Eco':'Teams spent &lt;2000 cr.\nSaving economy for next round;\nexpect pistols &amp; light buys.','Force':'Teams spent ~2000–3899 cr\ndespite low economy.\nForced buys to stay competitive.','Full Buy':'Teams spent ≥3900 cr.\nFull rifles + armor; reflects\ntrue meta weapon choices.','2nd Round':'Round after a pistol round win.\nBonus credits apply; shows\nhow teams transition off pistol.'};
+  var tH='<div class="phase-tabs">',pH='';
+  phases.forEach(function(ph,i){var pk=ph.replace(/ /g,'_'),tip=PTIPS[ph]||'';tH+='<button class="phase-tab'+(i===0?' active':'')+'" onclick="agentsPage.switchPhase(\''+uid+'\',\''+pk+'\',this)"'+(tip?' data-tip="'+tip+'"':'')+'>'+ph+'</button>';pH+='<div class="phase-pane'+(i===0?' active':'')+'" id="'+uid+'-'+pk+'">'+phasePane(a.by_phase&&a.by_phase[ph])+'</div>';});
+  tH+='</div>';
+
+  // Aggregate weapons and shields across ALL phases from by_phase (new data shape).
+  // by_phase is on the resolved stat node (a), not on a.loadout.
+  var _bp = a.by_phase || {};
+  var _allWeps = {}, _allShields = {}, _allSR = 0;
+  Object.values(_bp).forEach(function(ph) {
+    _allSR += (ph.sample_rounds || 0);
+    Object.keys(ph.weapons || {}).forEach(function(w) { _allWeps[w] = (_allWeps[w]||0) + (ph.weapons[w].count||0); });
+    Object.keys(ph.shields || {}).forEach(function(s) { _allShields[s] = (_allShields[s]||0) + (ph.shields[s].count||0); });
+  });
+  var _wepObj = {}, _shObj = {};
+  Object.keys(_allWeps).forEach(function(w) { _wepObj[w] = { buy_rate_pct: _allSR>0 ? _allWeps[w]/_allSR*100 : 0 }; });
+  Object.keys(_allShields).forEach(function(s) { _shObj[s] = { buy_rate_pct: _allSR>0 ? _allShields[s]/_allSR*100 : 0 }; });
+  var ws=splitW(_wepObj), sh2=_shObj;
+  var splitBtnStyle = showUtilSplit
+    ? 'font-family:var(--mono);font-size:8px;padding:2px 7px;border:1px solid var(--cyan);color:var(--cyan);background:var(--cyan-dim);cursor:pointer;letter-spacing:.06em;margin-left:10px;transition:all .15s;flex-shrink:0;'
+    : 'font-family:var(--mono);font-size:8px;padding:2px 7px;border:1px solid var(--border);color:var(--text-dim);background:transparent;cursor:pointer;letter-spacing:.06em;margin-left:10px;transition:all .15s;flex-shrink:0;';
+  var utilTitle = 'Utility Usage<button onclick="agentsPage.toggleUtilSplit()" style="'+splitBtnStyle+'">'+(showUtilSplit?'ATK&#x2F;DEF ✓':'ATK&#x2F;DEF')+'</button>';
+  return '<div class="acc-content"><div class="acc-grid-2"><div class="acc-panel"><div class="acc-title">'+utilTitle+'</div>'+utilH+'</div><div class="acc-panel"><div class="acc-title">Loadout by Phase'+infoIcon('% of rounds in that buy phase\nthis agent carried each weapon.\nDoes not sum to 100%.')+'</div>'+tH+pH+'</div></div><div class="acc-grid-3" style="margin-top:14px;"><div class="acc-panel"><div class="acc-title" style="color:var(--cyan);">Primary Weapons'+infoIcon('Share of all primary-slot rounds.\nBars sum to 100%.')+'</div>'+wepBars(ws.primary.slice(0,8),'background:rgba(0,212,255,.18);border-right:2px solid var(--cyan);')+'</div><div class="acc-panel"><div class="acc-title" style="color:var(--yellow);">Secondary Weapons'+infoIcon('Share of all sidearm rounds.\nBars sum to 100%.')+'</div>'+wepBars(ws.secondary,'background:rgba(255,232,77,.15);border-right:2px solid var(--yellow);')+'</div><div class="acc-panel"><div class="acc-title">Shield Breakdown</div>'+shieldBarsHTML(sh2)+'</div></div></div>';
+}
+
+function switchPhase(uid,pk,btn){var c=btn.closest('.acc-panel');c.querySelectorAll('.phase-pane').forEach(function(p){p.classList.remove('active');});c.querySelectorAll('.phase-tab').forEach(function(b){b.classList.remove('active');});var pane=document.getElementById(uid+'-'+pk);if(pane)pane.classList.add('active');btn.classList.add('active');}
+
+function toggleAccordion(agent){
+  var ar=document.querySelector('tr.agent-row[data-name="'+agent.name+'"]');
+  var id='acc-row-'+agent.name.replace(/[^a-z0-9]/gi,''), ex=document.getElementById(id);
+  if(ex){var o=ex.classList.contains('open');ex.classList.toggle('open',!o);if(ar)ar.classList.toggle('expanded',!o);if(o)expandedSet.delete(agent.name);else expandedSet.add(agent.name);return;}
+  var row=document.createElement('tr');row.className='accordion-row open';row.id=id;
+  var cell=document.createElement('td');cell.colSpan=8;cell.innerHTML=buildAccordion(agent);row.appendChild(cell);
+  if(ar){ar.classList.add('expanded');ar.after(row);}expandedSet.add(agent.name);
+}
+
+function createRow(a){
+  var row=document.createElement('tr');row.className='agent-row';row.dataset.name=a.name;if(expandedSet.has(a.name))row.classList.add('expanded');
+  var nmWR=a.non_mirror_win_rate!==null?'<span style="font-family:var(--mono);font-size:13px;font-weight:600;'+wrStyle(a.non_mirror_win_rate)+'">'+a.non_mirror_win_rate.toFixed(1)+'%</span><span style="font-size:.8em;opacity:.45;font-family:var(--mono);margin-left:4px;">('+a.non_mirror_picks+')</span>':'<span style="opacity:.35;">—</span>';
+  row.innerHTML='<td><div class="agent-cell"><img src="'+a.icon+'" alt="" class="agent-icon" onerror="this.style.display=\'none\'"><div><div class="agent-name">'+a.name+'<span class="expand-caret">▶</span></div><div class="agent-role">'+a.role+'</div></div></div></td><td class="stat-num">'+a.teams+'</td><td class="stat-num pct">'+a.team_percentage.toFixed(1)+'%</td><td class="stat-num"><span class="pct">'+a.matches_seen_percentage.toFixed(1)+'%</span> <span style="opacity:.4;font-size:.85em;">('+a.matches_seen+')</span></td><td><span style="font-family:var(--mono);font-size:13px;font-weight:600;'+wrStyle(a.win_rate)+'">'+a.win_rate.toFixed(1)+'%</span></td><td>'+nmWR+'</td><td class="stat-num kda-val">'+a.kda.toFixed(2)+'</td><td>'+(showUtil?utilMiniHTML(a):'')+'</td>';
+  row.onclick=function(){toggleAccordion(a);}; return row;
+}
+
+function reinsertAccordion(a,tbody){
+  if(!expandedSet.has(a.name))return;
+  var id='acc-row-'+a.name.replace(/[^a-z0-9]/gi,'');
+  var row=document.createElement('tr');row.className='accordion-row open';row.id=id;
+  var cell=document.createElement('td');cell.colSpan=8;cell.innerHTML=buildAccordion(a);row.appendChild(cell);tbody.appendChild(row);
+}
+
+function renderTable(){
+  var tbody=document.getElementById('agentTableBody'),minM=Number(document.getElementById('minMatches').value);
+  var cu=document.getElementById('col-util');if(cu)cu.style.display=showUtil?'':'none';
+  document.querySelectorAll('th.sortable').forEach(function(th){th.classList.remove('sorted','asc','desc');if(th.dataset.sort===sortKey)th.classList.add('sorted',sortDir);});
+  document.querySelectorAll('.util-sort-btn').forEach(function(btn){btn.classList.remove('active-inv','active-ult');if(btn.dataset.sort===sortKey)btn.classList.add(sortKey==='util_score'?'active-inv':'active-ult');});
+
+  var sq=(document.getElementById('agentSearch').value||'').toLowerCase().trim();
+  agentsMap=document.getElementById('agents-sel-map').value;
+  var hasRank=document.getElementById('agents-rank-grid').children.length>0;
+
+  var list=agentsData.filter(function(a){return activeRoles.has(a.role)&&(!sq||a.name.toLowerCase().indexOf(sq)!==-1);});
+
+  // ── Single-pass map + rank fusion via waterfall tree ─────────────────────
+  var selRanks   = Array.from(agentsRanks);
+  var isAllRanks = agentsRanksAll.size > 0 && agentsRanksAll.size === agentsRanks.size;
+  var anyFilter  = agentsMap !== 'all' || (agentsRanks.size > 0 && !isAllRanks);
+
+  if (anyFilter) {
+    list = list.map(function(a) {
+      var s = resolveAgentStats(a.name, agentsMap, selRanks, isAllRanks);
+      if (!s) return null;
+      return Object.assign({}, a, s, {
+        _filterOverlay: true,
+        name: a.name, role: a.role, icon: a.icon, loadout: a.loadout
+      });
+    }).filter(Boolean);
+  } else {
+    // No filter active: fuse all leaves for each agent (correct count-weighted aggregation)
+    list = list.map(function(a) {
+      var s = resolveAgentStats(a.name, 'all', [], true);
+      if (!s) return null;
+      return Object.assign({}, a, s, {name: a.name, role: a.role, icon: a.icon, loadout: a.loadout});
+    }).filter(Boolean);
+  }
+
+  list = list.filter(function(a){ return (a.matches_seen || 0) >= minM; });
+
+  // Compute sort keys that depend on the resolved utility (now at a.utility)
+  list.forEach(function(a) {
+    var u = a.utility;
+    a.util_score = u ? u.c+u.q+u.e+u.x : null;
+    a.ult_cpr    = u ? u.x : null;
+  });
+
+  list.sort(function(a,b){var va=a[sortKey],vb=b[sortKey];if(va===null&&vb===null)return 0;if(va===null)return 1;if(vb===null)return -1;if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return sortDir==='asc'?(va>vb?1:-1):(va<vb?1:-1);});
+  tbody.innerHTML='';
+  if(groupRole){var grp={};list.forEach(function(a){if(!grp[a.role])grp[a.role]=[];grp[a.role].push(a);});Object.keys(grp).sort().forEach(function(role){var hr=document.createElement('tr');hr.innerHTML='<td class="role-header-row" colspan="8">'+role+'  —  play rate: '+(reprData[role]||'N/A')+'</td>';tbody.appendChild(hr);grp[role].forEach(function(a){tbody.appendChild(createRow(a));reinsertAccordion(a,tbody);});});}
+  else{list.forEach(function(a){tbody.appendChild(createRow(a));reinsertAccordion(a,tbody);});}
+  if(list.length===1&&!expandedSet.has(list[0].name))toggleAccordion(list[0]);
+}
+
+// Event listeners
+document.getElementById('sortBy').addEventListener('change',function(e){sortKey=e.target.value;renderTable();});
+document.getElementById('sortOrder').addEventListener('change',function(e){sortDir=e.target.value;renderTable();});
+document.getElementById('minMatches').addEventListener('input',function(){renderTable();});
+document.getElementById('groupByRole').addEventListener('change',function(e){groupRole=e.target.checked;renderTable();});
+document.getElementById('showUtil').addEventListener('change',function(e){showUtil=e.target.checked;renderTable();});
+
+document.querySelectorAll('th.sortable').forEach(function(th){th.addEventListener('click',function(){var k=th.dataset.sort;if(sortKey===k)sortDir=sortDir==='desc'?'asc':'desc';else{sortKey=k;sortDir='desc';}document.getElementById('sortBy').value=sortKey;document.getElementById('sortOrder').value=sortDir;renderTable();});});
+document.querySelectorAll('.util-sort-btn').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();var k=btn.dataset.sort;if(sortKey===k)sortDir=sortDir==='desc'?'asc':'desc';else{sortKey=k;sortDir='desc';}document.getElementById('sortBy').value=sortKey;document.getElementById('sortOrder').value=sortDir;renderTable();});});
+
+// Init
+// Init map filter
+(function(){
+  var sel=document.getElementById('agents-sel-map'),ms=new Set();
+  // 1. agent_tree by_map keys (canonical waterfall source)
+  if(metaData.agent_tree){
+    Object.keys(metaData.agent_tree).forEach(function(name){
+      Object.keys(metaData.agent_tree[name].by_map||{}).forEach(function(m){ms.add(m);});
+    });
+  }
+  // 2. agent_stats_slices.maps array
+  if(!ms.size&&metaData.agent_stats_slices&&metaData.agent_stats_slices.maps)
+    metaData.agent_stats_slices.maps.forEach(function(m){ms.add(m);});
+  // 3. meta/data maps lists
+  if(!ms.size&&metaData.maps)metaData.maps.forEach(function(m){ms.add(m);});
+  if(!ms.size&&metaData.phase_distribution_by_map)Object.keys(metaData.phase_distribution_by_map).forEach(function(m){ms.add(m);});
+  // 4. legacy per-agent by_map keys
+  if(!ms.size)agentsData.forEach(function(a){if(a.by_map)Object.keys(a.by_map).forEach(function(m){ms.add(m);});});
+  Array.from(ms).sort().forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  if(!ms.size)sel.closest('.panel').style.display='none';
+})();
+
+(function(){
+  var rs=new Set();
+  // 1. agent_tree by_map.by_rank keys (canonical waterfall source)
+  if(metaData.agent_tree){
+    Object.values(metaData.agent_tree).forEach(function(ag){
+      Object.values(ag.by_map||{}).forEach(function(mn){
+        Object.keys(mn.by_rank||{}).forEach(function(r){rs.add(r.toLowerCase());});
+      });
+    });
+  }
+  // 2. agent_stats_slices.ranks array
+  if(!rs.size&&metaData.agent_stats_slices&&metaData.agent_stats_slices.ranks)
+    metaData.agent_stats_slices.ranks.forEach(function(r){rs.add(r.toLowerCase());});
+  // 3. summary / meta rank lists
+  if(!rs.size&&summary.ranks)summary.ranks.forEach(function(r){rs.add(r.toLowerCase());});
+  if(!rs.size&&metaData.ranks)metaData.ranks.forEach(function(r){rs.add(r.toLowerCase());});
+  // 4. legacy per-agent by_rank keys
+  if(!rs.size)agentsData.forEach(function(a){if(a.by_rank)Object.keys(a.by_rank).forEach(function(r){rs.add(r.toLowerCase());});});
+  var RO=['iron','bronze','silver','gold','plat','diamond','ascend','immortal','radiant'],
+      RL={iron:'IRON',bronze:'BRNZ',silver:'SLVR',gold:'GOLD',plat:'PLAT',diamond:'DIAM',ascend:'ASC',immortal:'IMMO',radiant:'RAD'};
+  var g=document.getElementById('agents-rank-grid'),n=document.getElementById('agents-rank-note');
+  if(!rs.size){g.style.display='none';n.style.display='';n.textContent='No per-rank data in dataset.';return;}
+  // Populate the canonical sets — only ranks actually present in data
+  agentsRanks=new Set(rs);
+  agentsRanksAll=new Set(rs);
+  var pr=RO.filter(function(r){return rs.has(r);});
+  rs.forEach(function(r){if(RO.indexOf(r)===-1)pr.push(r);});
+  pr.forEach(function(rank){
+    var b=document.createElement('span');b.className='rank-badge '+rank+' active';b.dataset.rank=rank;
+    b.textContent=RL[rank]||rank.toUpperCase().slice(0,4);
+    b.addEventListener('click',function(){
+      if(agentsRanks.has(rank)){agentsRanks.delete(rank);b.classList.remove('active');}
+      else{agentsRanks.add(rank);b.classList.add('active');}
+      renderTable();
+    });
+    g.appendChild(b);
+  });
+})();
+
+initRoleFilters();
+renderTable();
+
+function showUtilDetail(row) {
+  var slot=row.dataset.slot, panelId=row.dataset.panel;
+  var name=row.dataset.name, icon=row.dataset.icon;
+  var cpr=parseFloat(row.dataset.cpr), col=row.dataset.col;
+  var desc=row.dataset.desc||'';
+  var approx=parseInt(row.dataset.approx||Math.round(cpr*avgRounds),10);
+  var panel=document.getElementById(panelId);
+  if(!panel) return;
+  var wasSelected=row.classList.contains('util-selected');
+  row.closest('.acc-panel').querySelectorAll('.cpr-row').forEach(function(r){r.classList.remove('util-selected');});
+  if(wasSelected){panel.classList.remove('visible');panel.innerHTML='';return;}
+  row.classList.add('util-selected');
+  var iconHtml=icon
+    ? '<img src="'+icon+'" style="width:28px;height:28px;object-fit:contain;" onerror="this.style.display=&#39;none&#39;">'
+    : '<span style="font-family:var(--mono);font-size:16px;color:'+col+';">'+slot.toUpperCase()+'</span>';
+  var descHtml=desc
+    ? '<div class="udp-desc">'+desc+'</div>'
+    : '';
+  panel.innerHTML=
+    '<div class="udp-icon" style="border-color:'+col+'40;">'+iconHtml+'</div>'
+    +'<div class="udp-body">'
+    +'<div class="udp-name"><span class="udp-slot-badge" style="color:'+col+';border-color:'+col+'50;background:'+col+'12;">'+slot.toUpperCase()+'</span>'+name+'</div>'
+    +descHtml
+    +'<div class="udp-cpr">Casts per round: <strong>'+cpr.toFixed(3)+'</strong>'
+    +' <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-left:6px;">≈ <strong style="color:var(--text-bright);">'+approx+'</strong> casts/match</span>'
+    +(cpr>1.0?' <span style="font-size:9px;color:var(--yellow);margin-left:4px;">multi-charge</span>':'')
+    +(cpr<0.2?' <span style="font-size:9px;color:var(--text-dim);margin-left:4px;">rarely cast</span>':'')
+    +'</div>'
+    +'</div>';
+  panel.classList.add('visible');
+}
+
+function toggleUtilSplit() {
+  showUtilSplit = !showUtilSplit;
+  var opened = Array.from(expandedSet);
+  opened.forEach(function(name) {
+    var id = 'acc-row-' + name.replace(/[^a-z0-9]/gi, '');
+    var accRow = document.getElementById(id);
+    if (!accRow) return;
+    var agent = agentsData.find(function(a) { return a.name === name; });
+    if (!agent) return;
+    var cell = accRow.querySelector('td');
+    if (cell) cell.innerHTML = buildAccordion(agent);
+  });
+}
+
+return { renderTable: renderTable, switchPhase: switchPhase, showUtilDetail: showUtilDetail, toggleUtilSplit: toggleUtilSplit };
+})();
+</script>

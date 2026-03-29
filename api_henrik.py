@@ -1678,8 +1678,8 @@ class MatchRoundsItemPlayerStatsItemAbilityCasts:
         ji = JsonInjester(data)
         self.c_casts: Optional[int] = ji.get("c_casts")
         self.q_casts: Optional[int] = ji.get("q_casts")
-        self.e_casts: Optional[int] = ji.get("e_cast")   # note: API key inconsistency
-        self.x_casts: Optional[int] = ji.get("x_cast")   # note: API key inconsistency
+        self.e_casts: Optional[int] = ji.get("e_casts")
+        self.x_casts: Optional[int] = ji.get("x_casts")
 
     def as_dict(self) -> dict:
         return self.__data

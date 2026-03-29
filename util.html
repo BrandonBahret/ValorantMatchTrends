@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UTIL CHARGE CALCULATOR</title>
+<script src="round_stats.js"></script>
+<script src="report_data.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* util.html — page-specific only */
+.util-hist-toggle {
+  cursor: pointer; opacity: .45; transition: opacity .15s;
+  user-select: none;
+}
+.util-hist-toggle:hover { opacity: .75; }
+.util-hist-toggle.on { opacity: 1; }
+.util-hist-swatch { background: #39ff1430; border: 1px solid #39ff1460; }
+.util-hist-toggle.on .util-hist-swatch { background: #39ff1455; border-color: #39ff14aa; }
+@media (min-width: 1921px) {
+  .util-main {
+    max-width: calc(1920px - 340px); /* freeze at the column's width right at the 1080p breakpoint */
+    width: 100%;
+    justify-self: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="util-app">
+  <div class="util-sidebar">
+
+    <div class="util-panel">
+      <div class="util-panel-header">Context</div>
+      <div class="util-panel-body">
+        <div class="util-form-group">
+          <label>Episode / Act</label>
+          <select id="util-sel-act"><option value="all">All Acts</option></select>
+        </div>
+        <div class="util-form-group">
+          <label>Map</label>
+          <select id="util-sel-map"><option value="all">All Maps</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="util-panel">
+      <div class="util-panel-header">Rank Filter</div>
+      <div class="util-panel-body">
+        <div class="rank-grid" id="util-rank-grid">
+          <span class="rank-badge iron active"     data-rank="iron">IRON</span>
+          <span class="rank-badge bronze active"   data-rank="bronze">BRNZ</span>
+          <span class="rank-badge silver active"   data-rank="silver">SLVR</span>
+          <span class="rank-badge gold active"     data-rank="gold">GOLD</span>
+          <span class="rank-badge plat active"     data-rank="plat">PLAT</span>
+          <span class="rank-badge diamond active"  data-rank="diamond">DIAM</span>
+          <span class="rank-badge ascend active"   data-rank="ascend">ASC</span>
+          <span class="rank-badge immortal active" data-rank="immortal">IMMO</span>
+          <span class="rank-badge radiant active"  data-rank="radiant">RAD</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="util-panel">
+      <div class="util-panel-header">Util Config</div>
+      <div class="util-panel-body">
+        <div class="util-form-group">
+          <label>Cooldown Duration (sec)</label>
+          <input type="number" id="util-inp-cooldown" value="35" min="5" max="120" step="1">
+        </div>
+        <div class="util-form-group">
+          <label>Max Charges</label>
+          <input type="number" id="util-inp-maxcharges" value="2" min="1" max="5" step="1">
+        </div>
+        <div class="util-form-group">
+          <label>When is util first used?</label>
+          <select id="util-inp-phase">
+            <option value="roundstart" selected>Round Start (0s)</option>
+            <option value="early">Early Round (~12s in)</option>
+            <option value="plant">At Plant</option>
+            <option value="postplant">Post-Plant</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="util-form-group" id="util-custom-offset-group" style="display:none;">
+          <label>Custom offset &nbsp;<span style="color:var(--cyan);font-size:13px;" id="util-custom-offset-val">0</span>s</label>
+          <input type="range" id="util-inp-custom-offset" min="0" max="60" step="1" value="0">
+          <div class="util-range-labels"><span>0s</span><span>15s</span><span>30s</span><span>45s</span><span>60s</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /util-sidebar -->
+
+  <div class="util-main">
+
+    <div id="util-no-data" style="padding:40px;text-align:center;font-family:var(--mono);font-size:13px;color:var(--red);border:1px dashed var(--red-dim);line-height:2;">
+      No util data loaded.<br>Run <code style="color:var(--cyan);background:var(--bg3);padding:2px 8px;">collect_round_stats.py</code> to generate <code style="color:var(--cyan);background:var(--bg3);padding:2px 8px;">round_stats.js</code>, then place it alongside this page and reload.
+    </div>
+
+    <div id="util-content" style="display:none;flex-direction:column;gap:22px;">
+      <div class="util-act-badge" id="util-act-banner">
+        <span>▶</span>
+        <span id="util-act-banner-text">ALL ACTS</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+        SAMPLE SIZE: <span style="color:var(--cyan)" id="util-sample-size">—</span> rounds &nbsp;|&nbsp;
+        RANKS: <span style="color:var(--yellow)" id="util-active-ranks-label">ALL</span>
+      </div>
+
+      <div class="util-section-title">Round Duration Statistics</div>
+      <div class="util-stat-row">
+        <div class="util-stat-card" style="--accent:var(--cyan);">
+          <div class="label">Median Round Length</div>
+          <div class="value" id="util-stat-median">—<span>s</span></div>
+          <div class="sub" id="util-stat-median-sub">half of rounds are shorter than this</div>
+        </div>
+        <div class="util-stat-card" style="--accent:var(--yellow);">
+          <div class="label">Median Time to Plant</div>
+          <div class="value" id="util-stat-plant">—<span>s</span></div>
+          <div class="sub" id="util-stat-plant-sub">planted rounds only</div>
+        </div>
+        <div class="util-stat-card" style="--accent:var(--red);">
+          <div class="label">Median Post-Plant Time</div>
+          <div class="value" id="util-stat-postplant">—<span>s</span></div>
+          <div class="sub">after plant event</div>
+        </div>
+        <div class="util-stat-card" style="--accent:var(--green);">
+          <div class="label">No-Plant Round %</div>
+          <div class="value" id="util-stat-noplant">—<span>%</span></div>
+          <div class="sub" id="util-stat-noplant-sub">attacker elim / time</div>
+        </div>
+        <div class="util-stat-card" style="--accent:#a78bfa;">
+          <div class="label">Rounds With Recharge</div>
+          <div class="value" id="util-stat-recharge">—<span>%</span></div>
+          <div class="sub" id="util-stat-recharge-sub">budget left after recharge: —</div>
+        </div>
+        <div class="util-stat-card" style="--accent:#ff8c55;">
+          <div class="label">Recharge + 15s to use</div>
+          <div class="value" id="util-stat-recharge15">—<span>%</span></div>
+          <div class="sub">rounds with ≥15s after recharge</div>
+        </div>
+      </div>
+
+      <div class="util-section-title">Round Duration Distribution</div>
+      <div class="util-timeline-wrap">
+        <div class="util-phase-legend">
+          <div class="util-legend-item"><div class="util-legend-swatch" style="background:var(--cyan)"></div>Rounds without a plant</div>
+          <div class="util-legend-item"><div class="util-legend-swatch" style="background:var(--yellow)"></div>Rounds with a plant</div>
+          <div class="util-legend-item"><div class="util-legend-swatch" style="background:var(--text);opacity:.5"></div>All rounds combined</div>
+          <div class="util-legend-item"><div class="util-legend-swatch" style="background:#ffffff30;border:1px dashed #ffffff40;height:12px;width:24px;border-radius:1px;"></div>Cooldown window</div>
+          <label class="util-legend-item util-hist-toggle" id="util-hist-toggle-label">
+            <input type="checkbox" id="util-hist-checkbox" style="display:none;">
+            <div class="util-legend-swatch util-hist-swatch" style="height:12px;width:24px;border-radius:1px;"></div>
+            <span id="util-hist-toggle-text">Real histogram</span>
+          </label>
+        </div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);line-height:1.8;margin-bottom:14px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);">
+          Each curve shows the <span style="color:var(--text-bright)">distribution of round lengths</span> for that round type — taller = more rounds ended around that time.
+          <span style="color:var(--cyan)">Cyan</span> = rounds that ended before a plant.
+          <span style="color:var(--yellow)">Yellow</span> = rounds where the spike was planted.
+          The shaded band marks your cooldown window from the activation point.
+        </div>
+        <div class="util-timeline-canvas-wrap">
+          <canvas id="util-main-canvas" height="235" style="display:block;width:100%;"></canvas>
+        </div>
+        <div class="util-phase-breakdown">
+          <div class="util-phase-box">
+            <div class="ph-val" id="util-pb-early">—</div>
+            <div class="ph-lbl">Median time to plant</div>
+          </div>
+          <div class="util-phase-box">
+            <div class="ph-val" id="util-pb-post">—</div>
+            <div class="ph-lbl">Median post-plant window</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="util-section-title">Util Charge Analysis</div>
+      <div class="util-timeline-wrap">
+        <div style="width:100%;overflow:hidden;">
+          <canvas id="util-event-canvas" height="150" style="display:block;width:100%;"></canvas>
+        </div>
+        <div style="margin-top:14px;">
+          <label style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;">Cooldown to analyse &nbsp;<span style="color:var(--cyan)" id="util-cd-explore-val">35</span>s  <span style="color:var(--text-dim);font-size:10px;">(independent of config above — drag to explore)</span></label>
+          <input type="range" id="util-cd-explore" min="5" max="90" value="35">
+          <div class="util-range-labels"><span>5s</span><span>22s</span><span>45s</span><span>67s</span><span>90s</span></div>
+        </div>
+      </div>
+
+      <div class="util-charge-grid">
+        <div class="util-charge-panel">
+          <div class="util-charge-title">Budget by Activation Point</div>
+          <div id="util-charge-bars-wrap"></div>
+          <div class="util-info-text" style="margin-top:12px;" id="util-charge-summary-text">Configure the util above to see charge analysis.</div>
+        </div>
+        <div class="util-charge-panel">
+          <div class="util-charge-title">Charges Regained vs. Cooldown Length</div>
+          <canvas id="util-cd-canvas" height="180" style="display:block;width:100%;margin-bottom:10px;"></canvas>
+          <div class="util-info-text" id="util-cd-legend-text"></div>
+        </div>
+      </div>
+
+      <div class="util-section-title">Common Scenario Matrix</div>
+      <div class="util-timeline-wrap" style="padding:0;">
+        <table class="util-scenario-table">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Round Budget</th>
+              <th>Use Offset</th>
+              <th>Time Remaining</th>
+              <th>Recharges</th>
+            </tr>
+          </thead>
+          <tbody id="util-scenario-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /util-content -->
+  </div><!-- /util-main -->
+</div><!-- /util-app -->
+
+<script>
+'use strict';
+
+var UTIL_DATA = window.ROUND_STATS_DATA
+              || (window.REPORT_DATA && window.REPORT_DATA.util_stats)
+              || null;
+
+let LOADED_DATA = null;
+
+function normaliseRankStats(s) {
+  if (!s || !s.sample_rounds) return null;
+  let maxRound = null;
+  if (s.duration_hist) {
+    const nonZeroBins = Object.entries(s.duration_hist).filter(([,count]) => count > 0).map(([bin]) => +bin);
+    if (nonZeroBins.length) maxRound = Math.max(...nonZeroBins) + 5;
+  }
+  return {
+    median: s.median, p25: s.p25, p75: s.p75, maxRound,
+    medianPlant: s.median_plant_time, sdPlant: s.sd_plant_time,
+    medianPostPlant: s.median_post_plant, sdPostPlant: s.sd_post_plant,
+    plantRate: s.plant_rate, defuseRate: s.defuse_rate, elimRate: s.elim_rate,
+    sampleRounds: s.sample_rounds, durationHist: s.duration_hist || null,
+  };
+}
+
+function ingestUtilData(json) {
+  LOADED_DATA = json;
+
+  const actSel = document.getElementById('util-sel-act');
+  actSel.innerHTML = '<option value="all">All Acts</option>';
+  const actKeys = Object.keys(json.by_act || {}).filter(k => json.by_act[k]?.sample_rounds > 0);
+  actKeys.sort((a, b) => {
+    const parse = s => { const m = s.match(/e(\d+)a(\d+)/); return m ? [+m[1], +m[2]] : [0,0]; };
+    const [ae,aa] = parse(a), [be,ba] = parse(b);
+    return ae !== be ? be - ae : ba - aa;
+  });
+  actKeys.forEach(act => {
+    const m = act.match(/e(\d+)a(\d+)/);
+    const label = m ? `Episode ${m[1]} Act ${m[2]}` : act.toUpperCase();
+    const opt = document.createElement('option');
+    opt.value = act; opt.textContent = label; actSel.appendChild(opt);
+  });
+  actSel.value = 'all';
+
+  const mapSel = document.getElementById('util-sel-map');
+  mapSel.innerHTML = '<option value="all">All Maps</option>';
+  Object.keys(json.by_map || {}).filter(k => k !== 'Unknown' && json.by_map[k]?.sample_rounds > 0).sort().forEach(map => {
+    const opt = document.createElement('option'); opt.value = map; opt.textContent = map; mapSel.appendChild(opt);
+  });
+
+  document.querySelectorAll('#util-rank-grid .rank-badge').forEach(el => {
+    const rank = el.dataset.rank;
+    const hasData = !!(json.by_rank?.[rank]?.sample_rounds > 0);
+    el.style.display = hasData ? '' : 'none';
+    if (!hasData) utilActiveRanks.delete(rank);
+  });
+
+  const meta = json.meta || {};
+  const msg = {
+    type: 'util-data-loaded',
+    name: meta.name, tag: meta.tag,
+    round_count: meta.round_count || 0,
+    match_count: meta.match_count || 0,
+  };
+  window.parent.postMessage(msg, '*');
+
+  utilUpdate();
+}
+
+function getActiveUtilStats() {
+  if (!LOADED_DATA) return null;
+  const selectedAct = document.getElementById('util-sel-act').value;
+  const selectedMap = document.getElementById('util-sel-map').value;
+  const candidates = [];
+  for (const rank of utilActiveRanks) {
+    const rs = LOADED_DATA.by_rank?.[rank];
+    if (rs) candidates.push(normaliseRankStats(rs));
+  }
+  let base = null;
+  if (candidates.length) base = mergeUtilStats(candidates);
+  else if (selectedAct !== 'all' && LOADED_DATA.by_act?.[selectedAct]) base = normaliseRankStats(LOADED_DATA.by_act[selectedAct]);
+  else if (selectedMap !== 'all' && LOADED_DATA.by_map?.[selectedMap]) base = normaliseRankStats(LOADED_DATA.by_map[selectedMap]);
+  else base = normaliseRankStats(LOADED_DATA.overall);
+  if (!base) return null;
+  if (selectedAct !== 'all' && LOADED_DATA.by_act?.[selectedAct] && candidates.length) {
+    const actStats = normaliseRankStats(LOADED_DATA.by_act[selectedAct]);
+    const overall  = normaliseRankStats(LOADED_DATA.overall);
+    if (actStats && overall && overall.median > 0) {
+      const sc = actStats.median / overall.median;
+      base = { ...base, median: +(base.median*sc).toFixed(1), p25: +(base.p25*sc).toFixed(1), p75: +(base.p75*sc).toFixed(1) };
+    }
+  }
+  if (selectedMap !== 'all' && LOADED_DATA.by_map?.[selectedMap] && candidates.length) {
+    const mapStats = normaliseRankStats(LOADED_DATA.by_map[selectedMap]);
+    const overall  = normaliseRankStats(LOADED_DATA.overall);
+    if (mapStats && overall && overall.median > 0) {
+      const sc = mapStats.median / overall.median;
+      base = { ...base, median: +(base.median*sc).toFixed(1), p25: +(base.p25*sc).toFixed(1), p75: +(base.p75*sc).toFixed(1) };
+    }
+  }
+  return base;
+}
+
+function mergeUtilStats(arr) {
+  if (!arr.length) return null;
+  const valid = arr.filter(Boolean);
+  if (!valid.length) return null;
+  const totalN = valid.reduce((s,v) => s + (v.sampleRounds || 1), 0);
+  const wavg = k => valid.reduce((s,v) => s + (v[k] || 0) * (v.sampleRounds || 1), 0) / totalN;
+  return {
+    median: +wavg('median').toFixed(1), p25: +wavg('p25').toFixed(1), p75: +wavg('p75').toFixed(1),
+    maxRound: Math.max(...valid.map(v => v.maxRound || 0)) || null,
+    medianPlant: +wavg('medianPlant').toFixed(1), sdPlant: +wavg('sdPlant').toFixed(1),
+    medianPostPlant: +wavg('medianPostPlant').toFixed(1), sdPostPlant: +wavg('sdPostPlant').toFixed(1),
+    plantRate: +wavg('plantRate').toFixed(3), defuseRate: +wavg('defuseRate').toFixed(3),
+    elimRate: +wavg('elimRate').toFixed(3), sampleRounds: totalN, durationHist: null,
+  };
+}
+
+let utilActiveRanks = new Set(['iron','bronze','silver','gold','plat','diamond','ascend','immortal','radiant']);
+let utilCooldown = 35;
+let utilMaxCharges = 2;
+let utilActivationPhase = 'roundstart';
+let utilCustomOffset = 0;
+let utilShowHistogram = false;
+let utilExploreCD = 35;
+const UTIL_ROUND_MAX_SEC = 100;
+
+function getUtilRoundCutoff(s) { return s.maxRound || +s.median; }
+function calcUtilCharges(budget, cd) { return budget <= 0 ? 0 : Math.floor(budget / cd); }
+function getUtilActivationOffset(s) {
+  if (utilActivationPhase === 'roundstart') return 0;
+  if (utilActivationPhase === 'early')      return 12;
+  if (utilActivationPhase === 'plant')      return s.medianPlant;
+  if (utilActivationPhase === 'postplant')  return s.medianPlant + 2;
+  if (utilActivationPhase === 'custom')     return utilCustomOffset;
+  return 0;
+}
+
+function updateUtilStatCards(stats) {
+  document.getElementById('util-stat-median').innerHTML = `${(+stats.median).toFixed(1)}<span>s</span>`;
+  document.getElementById('util-stat-median-sub').textContent = `most rounds last ${(+stats.p25).toFixed(0)}s – ${(+stats.p75).toFixed(0)}s`;
+  document.getElementById('util-stat-plant').innerHTML = `${(+stats.medianPlant).toFixed(1)}<span>s</span>`;
+  document.getElementById('util-stat-postplant').innerHTML = `${(+stats.medianPostPlant).toFixed(1)}<span>s</span>`;
+  document.getElementById('util-stat-noplant').innerHTML = `${Math.round((1-stats.plantRate)*100)}<span>%</span>`;
+  const offset = getUtilActivationOffset(stats);
+  const rechargeThreshold = offset + utilCooldown;
+  let rechargeRoundPct;
+  if (stats.durationHist) {
+    const hist = stats.durationHist;
+    const total = Object.values(hist).reduce((a,b) => a+b, 0);
+    const above = Object.entries(hist).filter(([bin]) => +bin >= rechargeThreshold).reduce((a,[,c]) => a+c, 0);
+    rechargeRoundPct = total > 0 ? (above/total)*100 : 0;
+  } else {
+    const med=+stats.median, p25=+stats.p25, p75=+stats.p75, tailEnd=p75+(p75-med)*2, T=rechargeThreshold;
+    if      (T<=0)       rechargeRoundPct=100;
+    else if (T<=p25)     rechargeRoundPct=100-(T/p25)*25;
+    else if (T<=med)     rechargeRoundPct=75-((T-p25)/(med-p25))*25;
+    else if (T<=p75)     rechargeRoundPct=50-((T-med)/(p75-med))*25;
+    else if (T<=tailEnd) rechargeRoundPct=25-((T-p75)/(tailEnd-p75))*25;
+    else                 rechargeRoundPct=0;
+    rechargeRoundPct=Math.max(0,Math.min(100,rechargeRoundPct));
+  }
+  let medianTimeToInvest;
+  if (!stats.durationHist) {
+    const targetSurvival=rechargeRoundPct/2, med2=+stats.median, p25_2=+stats.p25, p75_2=+stats.p75, tailEnd2=p75_2+(p75_2-med2)*2;
+    let tStar;
+    if      (targetSurvival>=75) tStar=(100-targetSurvival)/25*p25_2;
+    else if (targetSurvival>=50) tStar=p25_2+((75-targetSurvival)/25)*(med2-p25_2);
+    else if (targetSurvival>=25) tStar=med2+((50-targetSurvival)/25)*(p75_2-med2);
+    else                         tStar=p75_2+((25-targetSurvival)/25)*(tailEnd2-p75_2);
+    medianTimeToInvest=Math.max(0,tStar-rechargeThreshold);
+  }
+  document.getElementById('util-stat-recharge').innerHTML = `${Math.round(rechargeRoundPct)}<span>%</span>`;
+  document.getElementById('util-stat-recharge-sub').textContent =
+    medianTimeToInvest!=null&&medianTimeToInvest>0 ? `of those rounds, median ${medianTimeToInvest.toFixed(0)}s remains` : `recharge fires at the very end of those rounds`;
+  const invest15Threshold = rechargeThreshold + 15;
+  let invest15Pct;
+  if (stats.durationHist) {
+    const hist=stats.durationHist, total=Object.values(hist).reduce((a,b)=>a+b,0);
+    const above=Object.entries(hist).filter(([bin])=>+bin>=invest15Threshold).reduce((a,[,c])=>a+c,0);
+    invest15Pct=total>0?(above/total)*100:0;
+  } else {
+    const med=+stats.median,p25=+stats.p25,p75=+stats.p75,tailEnd=p75+(p75-med)*2,T=invest15Threshold;
+    if      (T<=0)       invest15Pct=100;
+    else if (T<=p25)     invest15Pct=100-(T/p25)*25;
+    else if (T<=med)     invest15Pct=75-((T-p25)/(med-p25))*25;
+    else if (T<=p75)     invest15Pct=50-((T-med)/(p75-med))*25;
+    else if (T<=tailEnd) invest15Pct=25-((T-p75)/(tailEnd-p75))*25;
+    else                 invest15Pct=0;
+    invest15Pct=Math.max(0,Math.min(100,invest15Pct));
+  }
+  document.getElementById('util-stat-recharge15').innerHTML = `${Math.round(invest15Pct)}<span>%</span>`;
+  document.getElementById('util-sample-size').textContent = stats.sampleRounds ? stats.sampleRounds.toLocaleString() : (utilActiveRanks.size*850+1200).toLocaleString()+'*';
+  document.getElementById('util-active-ranks-label').textContent = utilActiveRanks.size===9?'ALL':[...utilActiveRanks].map(r=>r.toUpperCase().slice(0,3)).join(', ');
+  document.getElementById('util-pb-early').textContent = `~${(+stats.medianPlant).toFixed(0)}s`;
+  document.getElementById('util-pb-post').textContent  = `~${(+stats.medianPostPlant).toFixed(0)}s`;
+}
+
+function updateUtilActBanner() {
+  const act = document.getElementById('util-sel-act').value;
+  const m = act.match(/e(\d+)a(\d+)/i);
+  const label = act==='all' ? 'ALL ACTS' : m ? `EPISODE ${m[1]}  ACT ${m[2]}` : act.toUpperCase();
+  document.getElementById('util-act-banner-text').textContent = label;
+  window.parent.postMessage({ type: 'util-act-update', label }, '*');
+}
+
+function drawUtilDistribution(stats) {
+  const canvas = document.getElementById('util-main-canvas');
+  const W = canvas.parentElement.offsetWidth;
+  const H = 235;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const PAD = {top:16,bottom:24,left:40,right:16};
+  const cW = W-PAD.left-PAD.right, cH = H-PAD.top-PAD.bottom-18;
+  const toX = t => PAD.left+(t/UTIL_ROUND_MAX_SEC)*cW;
+  const toY = v => PAD.top+cH-v*cH;
+  ctx.strokeStyle='#1a2a3840'; ctx.lineWidth=1;
+  for (let t=0;t<=100;t+=15) { const x=toX(t); ctx.beginPath(); ctx.moveTo(x,PAD.top); ctx.lineTo(x,PAD.top+cH); ctx.stroke(); }
+  const hist = stats.durationHist;
+  if (hist && utilShowHistogram) {
+    const bins=Object.keys(hist).map(Number).sort((a,b)=>a-b);
+    const maxCount=Math.max(...Object.values(hist));
+    bins.forEach(b=>{
+      const count=hist[String(b)]||0;
+      const barH=maxCount>0?(count/maxCount)*cH:0;
+      const x0=toX(b), x1=toX(b+5);
+      ctx.fillStyle='#00d4ff18'; ctx.fillRect(x0,PAD.top+cH-barH,x1-x0-1,barH);
+      ctx.strokeStyle='#00d4ff40'; ctx.lineWidth=1; ctx.strokeRect(x0,PAD.top+cH-barH,x1-x0-1,barH);
+    });
+  }
+  function roundDist(t,median,sigma) {
+    const mu=Math.log(Math.max(median,1)), s=sigma/Math.max(median,1);
+    if (s<=0||t<=0) return 0;
+    return (1/(t*s*Math.sqrt(2*Math.PI)))*Math.exp(-Math.pow(Math.log(t)-mu,2)/(2*s*s));
+  }
+  const noplantMedian=Math.max(5,stats.medianPlant-5), sigma=Math.max(1,(stats.p75-stats.p25)/2.35);
+  const pts_all=[],pts_plant=[],pts_noplant=[]; let maxY=0;
+  for (let t=5;t<=100;t+=0.5) {
+    const pP=stats.plantRate*roundDist(t,stats.median,sigma);
+    const pN=(1-stats.plantRate)*roundDist(t,noplantMedian,sigma*0.8);
+    pts_all.push([t,pP+pN]); pts_plant.push([t,pP]); pts_noplant.push([t,pN]);
+    if (pP+pN>maxY) maxY=pP+pN;
+  }
+  const norm=v=>maxY>0?v/maxY:0;
+  const drawCurve=(pts,color,fill=true)=>{
+    if (fill) {
+      ctx.beginPath();
+      pts.forEach(([t,v],i)=>i===0?ctx.moveTo(toX(t),toY(norm(v))):ctx.lineTo(toX(t),toY(norm(v))));
+      ctx.lineTo(toX(pts[pts.length-1][0]),PAD.top+cH); ctx.lineTo(toX(pts[0][0]),PAD.top+cH); ctx.closePath();
+      ctx.fillStyle=color+'22'; ctx.fill();
+    }
+    ctx.strokeStyle=color; ctx.lineWidth=fill?0:1.5;
+    ctx.beginPath();
+    pts.forEach(([t,v],i)=>i===0?ctx.moveTo(toX(t),toY(norm(v))):ctx.lineTo(toX(t),toY(norm(v))));
+    ctx.stroke();
+  };
+  drawCurve(pts_noplant,'#00d4ff',true);
+  drawCurve(pts_plant,'#ffe84d',true);
+  const offset=getUtilActivationOffset(stats), cdEnd=Math.min(offset+utilCooldown,UTIL_ROUND_MAX_SEC);
+  ctx.fillStyle='#ffffff22'; ctx.fillRect(toX(offset),PAD.top,toX(cdEnd)-toX(offset),cH);
+  ctx.strokeStyle='#ffffff80'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(toX(offset),PAD.top); ctx.lineTo(toX(offset),PAD.top+cH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(toX(cdEnd),PAD.top); ctx.lineTo(toX(cdEnd),PAD.top+cH); ctx.stroke();
+  ctx.setLineDash([]);
+  drawCurve(pts_all,'#c8dbe8',false);
+  ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(toX(stats.median),PAD.top); ctx.lineTo(toX(stats.median),PAD.top+cH); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle='#00d4ff'; ctx.font='bold 11px Share Tech Mono';
+  ctx.fillText(`MED ${(+stats.median).toFixed(1)}s`,toX(stats.median)+5,PAD.top+14);
+  ctx.strokeStyle='#ffe84d'; ctx.lineWidth=1.5; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(toX(stats.medianPlant),PAD.top); ctx.lineTo(toX(stats.medianPlant),PAD.top+cH); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle='#ffe84d'; ctx.font='bold 11px Share Tech Mono';
+  ctx.fillText(`PLANT ${(+stats.medianPlant).toFixed(1)}s`,toX(stats.medianPlant)+5,PAD.top+28);
+  ctx.fillStyle='#ffffff70'; ctx.font='11px Share Tech Mono'; ctx.textAlign='center';
+  ctx.fillText(`CD ${utilCooldown}s`,toX((offset+cdEnd)/2),PAD.top+cH-8); ctx.textAlign='left';
+  if (hist && utilShowHistogram) {
+    ctx.fillStyle='#39ff1480'; ctx.font='10px Share Tech Mono';
+    ctx.fillText('REAL HISTOGRAM',PAD.left+6,PAD.top+13);
+  }
+  ctx.strokeStyle='#2e4860'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.left,PAD.top); ctx.lineTo(PAD.left,PAD.top+cH); ctx.lineTo(PAD.left+cW,PAD.top+cH); ctx.stroke();
+  ctx.fillStyle='#6a8aa8'; ctx.font='10px Share Tech Mono'; ctx.textAlign='center';
+  [0,15,30,45,60,75,90].forEach(t=>ctx.fillText(t+'s',toX(t),PAD.top+cH+14));
+  ctx.textAlign='right'; ctx.fillText('100s',toX(100),PAD.top+cH+14); ctx.textAlign='left';
+}
+
+function updateUtilChargeCalc(stats) {
+  const offset=getUtilActivationOffset(stats), cutoff=getUtilRoundCutoff(stats), totalBudget=cutoff-offset;
+  const wrap=document.getElementById('util-charge-bars-wrap');
+  wrap.innerHTML='';
+  [{label:'Max round budget',budget:cutoff,color:'#c8dbe8'},
+   {label:`From activation (${utilActivationPhase})`,budget:totalBudget,color:'#00d4ff'},
+   {label:'Post-plant only (median)',budget:stats.medianPostPlant,color:'#ff4655'}
+  ].forEach(ph=>{
+    const charges=Math.min(calcUtilCharges(ph.budget,utilCooldown),utilMaxCharges);
+    const pct=Math.min(100,(ph.budget/(utilMaxCharges*utilCooldown))*100);
+    const div=document.createElement('div'); div.className='util-charge-bar-wrap';
+    div.innerHTML=`<div class="util-charge-bar-label"><span>${ph.label}</span><span style="color:${ph.color}">${charges>=utilMaxCharges?'≥'+utilMaxCharges:charges} charge${charges!==1?'s':''} (${Math.max(0,ph.budget).toFixed(0)}s budget)</span></div><div class="util-charge-bar-track"><div class="util-charge-bar-fill" style="width:${pct}%;background:${ph.color}22;border-right:2px solid ${ph.color};"></div></div>`;
+    wrap.appendChild(div);
+  });
+  const main_charges=Math.min(calcUtilCharges(totalBudget,utilCooldown),utilMaxCharges);
+  document.getElementById('util-charge-summary-text').innerHTML =
+    `With a <span class="hl">${utilCooldown}s</span> cooldown activated at <span class="hl">${utilActivationPhase}</span>, ` +
+    `budget is up to <span class="hl">${Math.max(0,totalBudget).toFixed(0)}s</span>. ` +
+    `Up to <span class="hl">${main_charges}</span> recharge${main_charges!==1?'s':''} possible.` +
+    (totalBudget<utilCooldown?` <span style="color:var(--red)">Even the longest rounds end before 1 recharge!</span>`:'');
+}
+
+function drawUtilCDCanvas(stats) {
+  const canvas=document.getElementById('util-cd-canvas');
+  const W = canvas.parentElement.offsetWidth - 2;
+  const H=160;
+  canvas.width = W; canvas.height = H;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+  const PAD={top:16,bottom:36,left:36,right:16};
+  const cW=W-PAD.left-PAD.right, cH=H-PAD.top-PAD.bottom;
+  const offset=getUtilActivationOffset(stats), roundEnd=getUtilRoundCutoff(stats);
+  const TMAX=roundEnd+8, startCharge=utilMaxCharges-1;
+  const toX=t=>PAD.left+((t-offset)/(TMAX-offset))*cW;
+  const toY=n=>PAD.top+cH-(n/utilMaxCharges)*cH;
+  ctx.strokeStyle='#1e304060'; ctx.lineWidth=1;
+  for(let n=0;n<=utilMaxCharges;n++){
+    ctx.beginPath(); ctx.moveTo(PAD.left,toY(n)); ctx.lineTo(PAD.left+cW,toY(n)); ctx.stroke();
+    ctx.fillStyle = n===utilMaxCharges ? '#d8eaf8' : n===0 ? '#4a6070' : '#a0bcd0';
+    ctx.font='bold 10px Share Tech Mono'; ctx.textAlign='right';
+    ctx.fillText(n, PAD.left-5, toY(n)+4);
+  }
+  ctx.textAlign='left';
+  const steps=[{t:offset, n:startCharge}];
+  let charge=startCharge, t=offset+utilCooldown;
+  while(t<=roundEnd && charge<utilMaxCharges){
+    steps.push({t, n:charge}); charge=Math.min(charge+1,utilMaxCharges); steps.push({t, n:charge}); t+=utilCooldown;
+  }
+  steps.push({t:TMAX, n:charge});
+  ctx.beginPath();
+  steps.forEach(({t,n},i)=>i===0?ctx.moveTo(toX(t),toY(n)):ctx.lineTo(toX(t),toY(n)));
+  ctx.lineTo(toX(TMAX),toY(0)); ctx.lineTo(toX(offset),toY(0)); ctx.closePath();
+  ctx.fillStyle='#00d4ff0c'; ctx.fill();
+  ctx.beginPath();
+  steps.forEach(({t,n},i)=>i===0?ctx.moveTo(toX(t),toY(n)):ctx.lineTo(toX(t),toY(n)));
+  ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.strokeStyle='#c8dbe840'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(toX(roundEnd),PAD.top); ctx.lineTo(toX(roundEnd),PAD.top+cH); ctx.stroke();
+  ctx.setLineDash([]);
+  const cdFiresAt=offset+utilCooldown, firesInRound=cdFiresAt<=roundEnd;
+  const dotCharge=firesInRound ? startCharge+1 : startCharge;
+  ctx.strokeStyle='#ff4655'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(toX(cdFiresAt),PAD.top); ctx.lineTo(toX(cdFiresAt),PAD.top+cH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(toX(cdFiresAt),toY(dotCharge),5,0,Math.PI*2);
+  ctx.fillStyle='#ff4655'; ctx.fill();
+  const labelRight=toX(cdFiresAt)>PAD.left+cW*0.6;
+  ctx.fillStyle='#ff4655'; ctx.font='bold 10px Share Tech Mono';
+  ctx.textAlign=labelRight?'right':'left';
+  ctx.fillText(`${utilCooldown}s CD — ${firesInRound?'recharges at '+cdFiresAt.toFixed(0)+'s':"doesn't complete"}`,labelRight?toX(cdFiresAt)-9:toX(cdFiresAt)+9,toY(dotCharge)-8);
+  ctx.textAlign='left';
+  ctx.fillStyle='#4a6070'; ctx.font='9px Share Tech Mono'; ctx.textAlign='center';
+  const span=TMAX-offset, step=span<=30?5:span<=60?10:15;
+  for(let tick=offset;tick<TMAX;tick+=step){ if(Math.abs(tick-roundEnd)>3) ctx.fillText(tick+'s',toX(tick),PAD.top+cH+14); }
+  ctx.fillText('Time (seconds from round start)',PAD.left+cW/2,PAD.top+cH+28); ctx.textAlign='left';
+  ctx.save(); ctx.translate(11,PAD.top+cH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#6a8aa8'; ctx.font='9px Share Tech Mono'; ctx.textAlign='center';
+  ctx.fillText('Charges held',0,0); ctx.restore();
+  ctx.strokeStyle='#2e4860'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.left,PAD.top); ctx.lineTo(PAD.left,PAD.top+cH); ctx.lineTo(PAD.left+cW,PAD.top+cH); ctx.stroke();
+  document.getElementById('util-cd-legend-text').innerHTML =
+    `Used at <span class="hl">${offset.toFixed(0)}s</span> → <span class="hl">${startCharge}/${utilMaxCharges}</span> charges. ` +
+    `Cutoff: max observed round (~<span class="hl">${roundEnd.toFixed(0)}s</span>). ` +
+    (firesInRound
+      ? `Cooldown completes at <span class="hl">${cdFiresAt.toFixed(0)}s</span> → back to <span class="hl">${Math.min(startCharge+1,utilMaxCharges)}/${utilMaxCharges}</span>.`
+      : `<span style="color:var(--red)">Cooldown (${utilCooldown}s) doesn't complete even in the longest rounds (~${roundEnd.toFixed(0)}s).</span>`);
+}
+
+function buildUtilScenarioTable(stats) {
+  const scenarios = [
+    {name:'Typical round (median)',             budget:stats.median,                                             offset:0,                  note:'50% of rounds'},
+    {name:'Short round — bottom quartile',      budget:stats.p25,                                                offset:0,                  note:'25% are this short or shorter'},
+    {name:'Long round — top quartile',          budget:stats.p75,                                                offset:0,                  note:'25% are this long or longer'},
+    {name:'Typical + used early (~12s in)',     budget:stats.median,                                             offset:12,                 note:''},
+    {name:'Typical + used at plant',            budget:stats.median,                                             offset:stats.medianPlant,  note:''},
+    {name:'Post-plant window only (median)',    budget:stats.medianPostPlant,                                    offset:0,                  note:'spike planted, util used now'},
+    {name:'Post-plant window — short end',      budget:Math.max(4,stats.medianPostPlant-stats.sdPostPlant),     offset:0,                  note:'~1 SD below median'},
+    {name:'Time-to-plant — short end',          budget:Math.max(0,stats.medianPlant-stats.sdPlant),             offset:0,                  note:'~1 SD below median'},
+    {name:'Time-to-plant — long end',           budget:stats.medianPlant+stats.sdPlant,                         offset:0,                  note:'~1 SD above median'},
+  ];
+  const tbody=document.getElementById('util-scenario-tbody'); tbody.innerHTML='';
+  scenarios.forEach(sc=>{
+    const avail=Math.max(0,sc.budget-sc.offset), recharges=calcUtilCharges(avail,utilCooldown);
+    const cls=recharges===0?'zero':recharges===1?'one':recharges===2?'two':'three';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`${sc.note?`<td style="color:var(--text-bright)">${sc.name}<br><span style="color:var(--text-dim);font-size:11px;">${sc.note}</span></td>`:`<td style="color:var(--text-bright)">${sc.name}</td>`}
+      <td>${(+sc.budget).toFixed(0)}s</td><td>${sc.offset.toFixed(0)}s</td>
+      <td style="color:${avail<utilCooldown?'var(--red)':'var(--text)'}">${avail.toFixed(0)}s</td>
+      <td><span class="charge-count ${cls}">${recharges}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function drawUtilEventTimeline(stats, cd) {
+  const canvas=document.getElementById('util-event-canvas');
+  const W = canvas.parentElement.offsetWidth;
+  const H=150;
+  canvas.width = W; canvas.height = H;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+  const PAD={left:52,right:16,top:14,bottom:26};
+  const cW=W-PAD.left-PAD.right, cH=H-PAD.top-PAD.bottom;
+  const plantT=stats.medianPlant, roundEnd=getUtilRoundCutoff(stats), offset=getUtilActivationOffset(stats);
+  const toX=t=>PAD.left+(t/roundEnd)*cW;
+  const zoneY=PAD.top, zoneH=Math.round(cH*0.42), GAP=8, trackY=zoneY+zoneH+GAP, trackH=cH-zoneH-GAP, midTrack=trackY+trackH/2;
+  ctx.fillStyle='#00d4ff18'; ctx.fillRect(toX(0),zoneY,toX(plantT)-toX(0),zoneH);
+  ctx.fillStyle='#ffe84d18'; ctx.fillRect(toX(plantT),zoneY,toX(roundEnd)-toX(plantT),zoneH);
+  ctx.fillStyle='#1a2d3d'; ctx.fillRect(toX(0),trackY,cW,trackH);
+  const segColors=['#00d4ff','#ffe84d','#ff8c55','#a78bfa'];
+  let chargeLevel=utilMaxCharges-1, t=offset, rechargeCount=0;
+  while (t+cd<=roundEnd && rechargeCount<utilMaxCharges) {
+    const segEnd=t+cd, color=segColors[rechargeCount%segColors.length];
+    ctx.fillStyle=color+'35'; ctx.fillRect(toX(t),trackY+1,toX(segEnd)-toX(t)-1,trackH-2);
+    ctx.strokeStyle=color+'aa'; ctx.lineWidth=1; ctx.strokeRect(toX(t),trackY+1,toX(segEnd)-toX(t)-1,trackH-2);
+    ctx.fillStyle=color; ctx.font='bold 12px Share Tech Mono'; ctx.textAlign='center';
+    ctx.fillText(`${chargeLevel}/${utilMaxCharges}`,(toX(t)+toX(segEnd))/2,midTrack+4); ctx.textAlign='left';
+    chargeLevel=Math.min(chargeLevel+1,utilMaxCharges); t=segEnd; rechargeCount++;
+  }
+  if (t<roundEnd) {
+    ctx.fillStyle='#243545'; ctx.fillRect(toX(t),trackY+1,toX(roundEnd)-toX(t)-1,trackH-2);
+    ctx.fillStyle='#7a9ab8'; ctx.font='bold 12px Share Tech Mono'; ctx.textAlign='center';
+    ctx.fillText(`${chargeLevel}/${utilMaxCharges}`,(toX(t)+toX(roundEnd))/2,midTrack+4); ctx.textAlign='left';
+  }
+  ctx.font='bold 10px Share Tech Mono'; ctx.fillStyle='#00d4ffaa'; ctx.fillText('ATTACK',toX(0)+5,zoneY+zoneH-5);
+  ctx.fillStyle='#ffe84daa'; ctx.fillText('POST-PLANT',toX(plantT)+5,zoneY+zoneH-5);
+  const drawMarker=(tx,color,dash,label)=>{
+    ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(toX(tx),zoneY); ctx.lineTo(toX(tx),trackY+trackH); ctx.stroke(); ctx.setLineDash([]);
+    if (label){ ctx.fillStyle=color; ctx.font='9px Share Tech Mono'; ctx.fillText(label,toX(tx)+3,H-8); }
+  };
+  drawMarker(plantT,'#ffe84d',[3,3],`plant ~${plantT.toFixed(0)}s`);
+  drawMarker(stats.median,'#c8dbe8cc',[3,3],`median ~${(+stats.median).toFixed(0)}s`);
+  ctx.strokeStyle='#39ff14'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(toX(offset),trackY-2); ctx.lineTo(toX(offset),trackY+trackH+2); ctx.stroke();
+  ctx.fillStyle='#39ff14'; ctx.font='bold 10px Share Tech Mono'; ctx.fillText('USE',toX(offset)+3,trackY-3);
+  t=offset; rechargeCount=0; chargeLevel=utilMaxCharges-1;
+  while (t+cd<=roundEnd && rechargeCount<utilMaxCharges) {
+    const segEnd=t+cd, color=segColors[rechargeCount%segColors.length];
+    chargeLevel=Math.min(chargeLevel+1,utilMaxCharges);
+    ctx.strokeStyle=color; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(toX(segEnd),trackY-1); ctx.lineTo(toX(segEnd),trackY+trackH+1); ctx.stroke();
+    ctx.fillStyle=color; ctx.font='bold 10px Share Tech Mono';
+    ctx.fillText(`+1 → ${chargeLevel}/${utilMaxCharges}`,toX(segEnd)+3,trackY-3);
+    t=segEnd; rechargeCount++;
+  }
+  ctx.fillStyle='#4a6070'; ctx.font='9px Share Tech Mono'; ctx.textAlign='left';
+  const tickStep=roundEnd>80?15:10;
+  for(let tick=0;tick<=roundEnd;tick+=tickStep) ctx.fillText(tick+'s',toX(tick)-(tick===0?0:6),H-4);
+  ctx.textAlign='center'; ctx.fillStyle='#c8dbe870'; ctx.fillText(`max ~${roundEnd.toFixed(0)}s`,toX(roundEnd),H-4);
+  ctx.save(); ctx.translate(12,trackY+trackH/2+4); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#4a6070'; ctx.font='9px Share Tech Mono'; ctx.textAlign='center'; ctx.fillText('CHARGES',0,0); ctx.restore();
+}
+
+function utilUpdate() {
+  const stats = getActiveUtilStats();
+  const noData = document.getElementById('util-no-data');
+  const utilContent = document.getElementById('util-content');
+  if (!stats) {
+    if (noData) noData.style.display = '';
+    if (utilContent) utilContent.style.display = 'none';
+    return;
+  }
+  if (noData) noData.style.display = 'none';
+  if (utilContent) utilContent.style.display = 'flex';
+  // show/hide histogram toggle based on whether real data is available
+  const histToggle = document.getElementById('util-hist-toggle-label');
+  if (histToggle) {
+    const hasHist = !!(stats.durationHist);
+    histToggle.style.display = hasHist ? '' : 'none';
+    if (!hasHist && utilShowHistogram) {
+      utilShowHistogram = false;
+      document.getElementById('util-hist-checkbox').checked = false;
+      histToggle.classList.remove('on');
+    }
+  }
+  updateUtilActBanner();
+  updateUtilStatCards(stats);
+  updateUtilChargeCalc(stats);
+  buildUtilScenarioTable(stats);
+  setTimeout(() => {
+    drawUtilDistribution(stats);
+    drawUtilCDCanvas(stats);
+    drawUtilEventTimeline(stats, utilExploreCD);
+  }, 0);
+}
+
+function buildReportText() {
+  if (!LOADED_DATA) return null;
+  if (LOADED_DATA.summary) return LOADED_DATA.summary;
+  const meta=LOADED_DATA.meta||{}, ov=LOADED_DATA.overall||{};
+  const p=(v,d=3)=>v!=null?(+v).toFixed(d):'—';
+  const lines=[];
+  lines.push(`── ${meta.name||'?'}#${meta.tag||'?'} ─────────────────────────────────────────`);
+  lines.push(`  Rounds        : ${ov.sample_rounds??'—'}`);
+  lines.push(`  Matches       : ${meta.match_count??'—'}`);
+  lines.push(`  Acts          : ${(meta.acts||[]).join(', ')}`);
+  lines.push(`  Median round  : ${p(ov.median,2)}s  (${p(ov.p25,2)}s – ${p(ov.p75,2)}s typical range)`);
+  lines.push(`  Plant rate    : ${ov.plant_rate!=null?(ov.plant_rate*100).toFixed(1):'—'}%`);
+  lines.push(`  Median plant  : ${p(ov.median_plant_time,2)}s`);
+  lines.push(`  Median post   : ${p(ov.median_post_plant,2)}s`);
+  lines.push(`  Defuse rate   : ${ov.defuse_rate!=null?(ov.defuse_rate*100).toFixed(1):'—'}% of planted rounds`);
+  const rankOrder=['iron','bronze','silver','gold','plat','diamond','ascend','immortal','radiant'];
+  const byRank=LOADED_DATA.by_rank||{};
+  if (Object.keys(byRank).length) { lines.push(''); lines.push('  By rank:');
+    rankOrder.forEach(tier=>{ const s=byRank[tier]; if (s?.sample_rounds)
+      lines.push(`    ${tier.padEnd(10)}  n=${String(s.sample_rounds).padStart(4)}  med=${p(s.median,2)}s  plant=${p(s.median_plant_time,2)}s  post=${p(s.median_post_plant,2)}s`); }); }
+  const byAct=LOADED_DATA.by_act||{};
+  if (Object.keys(byAct).length) { lines.push(''); lines.push('  By act:');
+    Object.keys(byAct).sort().reverse().forEach(act=>{ const s=byAct[act]; if (s?.sample_rounds)
+      lines.push(`    ${act.padEnd(10)}  n=${String(s.sample_rounds).padStart(4)}  med=${p(s.median,2)}s  plant=${p(s.median_plant_time,2)}s  post=${p(s.median_post_plant,2)}s`); }); }
+  const byMap=LOADED_DATA.by_map||{};
+  if (Object.keys(byMap).length) { lines.push(''); lines.push('  By map:');
+    Object.keys(byMap).sort().forEach(map=>{ const s=byMap[map]; if (s?.sample_rounds)
+      lines.push(`    ${map.padEnd(14)}  n=${String(s.sample_rounds).padStart(4)}  med=${p(s.median,2)}s  plant=${p(s.median_plant_time,2)}s  post=${p(s.median_post_plant,2)}s`); }); }
+  return lines.join('\n');
+}
+
+window.addEventListener('message', e => {
+  if (e.data?.type === 'open-stats-report') {
+    const text = buildReportText();
+    if (text) window.parent.postMessage({ type: 'show-stats-report', text }, '*');
+  }
+});
+
+document.getElementById('util-hist-checkbox').addEventListener('change', e => {
+  utilShowHistogram = e.target.checked;
+  const label = document.getElementById('util-hist-toggle-label');
+  label.classList.toggle('on', utilShowHistogram);
+  utilUpdate();
+});
+document.getElementById('util-hist-toggle-label').addEventListener('click', () => {
+  const cb = document.getElementById('util-hist-checkbox');
+  cb.checked = !cb.checked;
+  cb.dispatchEvent(new Event('change'));
+});
+document.getElementById('util-sel-map').addEventListener('change', utilUpdate);
+document.querySelectorAll('#util-rank-grid .rank-badge').forEach(el => {
+  el.addEventListener('click', () => {
+    const r = el.dataset.rank;
+    if (utilActiveRanks.has(r)) { utilActiveRanks.delete(r); el.classList.remove('active'); }
+    else { utilActiveRanks.add(r); el.classList.add('active'); }
+    utilUpdate();
+  });
+});
+document.getElementById('util-inp-cooldown').addEventListener('input', e => {
+  utilCooldown = +e.target.value;
+  document.getElementById('util-cd-explore').value = utilCooldown;
+  document.getElementById('util-cd-explore-val').textContent = utilCooldown;
+  utilExploreCD = utilCooldown; utilUpdate();
+});
+document.getElementById('util-inp-maxcharges').addEventListener('input', e => { utilMaxCharges = +e.target.value; utilUpdate(); });
+document.getElementById('util-inp-phase').addEventListener('change', e => {
+  utilActivationPhase = e.target.value;
+  const customGroup = document.getElementById('util-custom-offset-group');
+  customGroup.style.display = utilActivationPhase === 'custom' ? '' : 'none';
+  utilUpdate();
+});
+document.getElementById('util-inp-custom-offset').addEventListener('input', e => {
+  utilCustomOffset = +e.target.value;
+  document.getElementById('util-custom-offset-val').textContent = utilCustomOffset;
+  utilUpdate();
+});
+document.getElementById('util-cd-explore').addEventListener('input', e => {
+  utilCooldown = +e.target.value; utilExploreCD = utilCooldown;
+  document.getElementById('util-cd-explore-val').textContent = utilCooldown;
+  document.getElementById('util-inp-cooldown').value = utilCooldown; utilUpdate();
+});
+
+if (UTIL_DATA) {
+  ingestUtilData(UTIL_DATA);
+} else {
+  utilUpdate();
+}
+
+window.addEventListener('resize', () => { clearTimeout(window._utilResizeTimer); window._utilResizeTimer = setTimeout(utilUpdate, 100); });
+</script>
+</body>
+</html>
