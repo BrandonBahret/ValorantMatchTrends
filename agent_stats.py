@@ -1466,8 +1466,7 @@ if __name__ == "__main__":
     db  = ValorantDB(region=REGION)
 
     my_puuid = api.get_account_by_name("0dmg", "sadge").puuid
-    # Uncomment the line below to refresh the local DB before generating:
-    # db.update_match_history_for_puuid(my_puuid)
+    db.update_match_history_for_puuid(my_puuid)
 
     history = MatchHistoryProcessor(
         my_puuid, ACTS_OF_INTEREST, db,

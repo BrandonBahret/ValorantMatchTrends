@@ -14,9 +14,4 @@ if __name__ == "__main__":
     app.mainloop()
     
     
-    """
-    
-    
-    match_history.js, match-history.html
-    """
-    
+    # pending gen: https://claude.ai/chat/ed134f62-c9b9-4b34-9a7a-aceb6b525f71

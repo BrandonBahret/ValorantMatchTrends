@@ -18,7 +18,7 @@
   --border-bright: rgba(60,100,140,.8);
   --text:       #a8c0d4;
   --text-bright:#e8f4ff;
-  --text-dim:   #546e84;
+  --text-dim:   hsl(206, 20%, 54%);
   --red:    #ff4655;
   --cyan:   #00d4ff;
   --cyan-dim:rgba(0,212,255,.25);
@@ -151,7 +151,7 @@ body {
 .mh-count span { color: var(--cyan); }
 
 /* ── MATCH CARDS ──────────────────────────────────────────── */
-.match-list { display: flex; flex-direction: column; gap: 8px; max-width: 1100px; margin: 0 auto; width: 100%; }
+.match-list { display: flex; flex-direction: column; gap: 8px; max-width: 1800px; margin: 0 auto; width: 100%; }
 
 .match-card {
   border: 1px solid var(--border);
@@ -414,6 +414,12 @@ body {
 
 .sb-kda { color: var(--text-bright); font-size: 13px; }
 .sb-util-kda { color: var(--text-bright); font-size: 13px; }
+.sb-util-total {
+  display: inline-block; margin-left: 5px;
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  background: rgba(255,255,255,.06); border: 1px solid var(--border);
+  padding: 1px 4px; vertical-align: middle; letter-spacing: .03em;
+}
 .sb-acs-val { color: var(--cyan); font-weight: 700; font-size: 13px; }
 .hs-ok   { color: var(--text); }
 .hs-good { color: var(--win); }
@@ -505,11 +511,27 @@ body {
 
 /* util bars */
 .sb-pex-util-row {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; border-radius: 2px;
+  transition: background .12s; padding: 3px 4px; margin-bottom: 2px;
 }
-.sb-pex-util-key {
+.sb-pex-util-row:hover { background: rgba(255,255,255,.04); }
+.sb-pex-util-row.open  { background: rgba(255,255,255,.05); margin-bottom: 0; }
+.sb-pex-util-desc {
+  display: none;
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  line-height: 1.65; letter-spacing: .02em;
+  padding: 5px 8px 8px 38px;
+  border-left: 1px solid var(--border);
+  margin: 0 4px 8px 4px;
+}
+.sb-pex-util-row.open + .sb-pex-util-desc { display: block; }
+.sb-pex-util-icon {
+  width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; opacity: .85;
+}
+.sb-pex-util-icon-fallback {
   font-family: var(--mono); font-size: 10px; font-weight: 700;
-  width: 14px; text-align: center; flex-shrink: 0;
+  width: 18px; text-align: center; flex-shrink: 0;
 }
 .sb-pex-util-track {
   flex: 1; height: 5px; background: var(--border); position: relative;
@@ -518,8 +540,17 @@ body {
   height: 100%; position: absolute; top: 0; left: 0; transition: width .3s;
 }
 .sb-pex-util-val {
-  font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
   min-width: 28px; text-align: right;
+}
+.sb-pex-util-name {
+  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+  letter-spacing: .04em; text-transform: uppercase; min-width: 64px; flex-shrink: 0;
+  opacity: .65;
+}
+.sb-pex-util-cpr {
+  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+  min-width: 36px; text-align: right; opacity: .5; flex-shrink: 0;
 }
 
 /* links */
@@ -535,12 +566,6 @@ body {
 .sb-pex-link-icon { font-size: 13px; opacity: .7; flex-shrink: 0; }
 .sb-pex-link-label { flex: 1; }
 .sb-pex-link-sub { font-size: 9px; color: var(--text-dim); margin-top: 2px; letter-spacing: .06em; }
-.sb-pex-stub {
-  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
-  border: 1px dashed rgba(100,150,180,.2); padding: 8px 10px;
-  margin-top: 8px; line-height: 1.7; opacity: .6;
-}
-.sb-pex-stub::before { content: '// '; color: rgba(0,212,255,.4); }
 
 /* ── PAGINATION ───────────────────────────────────────────── */
 .mh-pagination {
@@ -704,21 +729,25 @@ body {
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════
-   PARTY COLORS — assign a persistent color per party_id
+   PARTY COLORS — assign unique colors per party_id scoped to each match
 ═══════════════════════════════════════════════════════════════ */
 const PARTY_PALETTE = [
   '#f4c542','#42b4f4','#f47c42','#a142f4',
   '#42f4a1','#f44278','#78f442','#4278f4',
 ];
-const partyColorCache = {};
-let partyColorIdx = 0;
 
-function partyColor(partyId) {
-  if (!partyId) return null;
-  if (!partyColorCache[partyId]) {
-    partyColorCache[partyId] = PARTY_PALETTE[partyColorIdx++ % PARTY_PALETTE.length];
+/* Returns a { partyId -> color } map for one match.
+   Only IDs appearing more than once (real parties) get a color.
+   Colors are assigned in palette order, guaranteed unique within the match. */
+function buildPartyColorMap(allPlayers) {
+  const counts = {};
+  for (const p of allPlayers) if (p.party_id) counts[p.party_id] = (counts[p.party_id]||0)+1;
+  const map = {};
+  let idx = 0;
+  for (const id of Object.keys(counts)) {
+    if (counts[id] > 1) map[id] = PARTY_PALETTE[idx++ % PARTY_PALETTE.length];
   }
-  return partyColorCache[partyId];
+  return map;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -750,10 +779,12 @@ function buildPartyGroups(bluePlayers, redPlayers) {
     for (const p of id) counts[p.party_id] = (counts[p.party_id]||0)+1;
     return counts;
   };
-  return { blue: tally(bluePlayers), red: tally(redPlayers) };
+  // Build color map scoped to this match (all 10 players together)
+  const colorMap = buildPartyColorMap([...bluePlayers, ...redPlayers]);
+  return { blue: tally(bluePlayers), red: tally(redPlayers), colorMap };
 }
 
-function mapRow(r, partyCounts) {
+function mapRow(r, partyCounts, colorMap) {
   const isPartyMember = partyCounts && r.party_id && (partyCounts[r.party_id]||0) > 1;
   return {
     name:         `${r.name}#${r.tag}`,
@@ -773,6 +804,7 @@ function mapRow(r, partyCounts) {
     firstBloods:  r.first_bloods ?? null,
     firstDeaths:  r.first_deaths ?? null,
     partyId:      r.party_id || null,
+    partyColor:   isPartyMember ? (colorMap?.[r.party_id] || null) : null,
     inParty:      isPartyMember,
   };
 }
@@ -818,8 +850,8 @@ function normalise(m) {
     firstBloods:  myRow?.first_bloods ?? null,
     firstDeaths:  myRow?.first_deaths ?? null,
     scoreboard: {
-      blue: bluePlayers.map(r => mapRow(r, partyCounts.blue)),
-      red:  redPlayers.map(r  => mapRow(r, partyCounts.red)),
+      blue: bluePlayers.map(r => mapRow(r, partyCounts.blue, partyCounts.colorMap)),
+      red:  redPlayers.map(r  => mapRow(r, partyCounts.red,  partyCounts.colorMap)),
     },
   };
 }
@@ -956,7 +988,7 @@ function sortTeam(matchId, team, col, event) {
     players.sort((a, b) => dir === 'desc' ? colVal(b) - colVal(a) : colVal(a) - colVal(b));
 
     const tbody = document.querySelector(`[data-match-id="${matchId}"] .sb-tbody-${t}`);
-    if (tbody) tbody.innerHTML = players.map(p => sbRow(p)).join('');
+    if (tbody) tbody.innerHTML = players.map(p => sbRow(p, m.rounds)).join('');
 
     const table = document.querySelector(`[data-match-id="${matchId}"] .sb-table-${t}`);
     if (table) {
@@ -1009,7 +1041,8 @@ function utilChips(casts) {
   const keys = ['c','q','e','x'];
   const vals = keys.map(k => casts[k] ?? 0);
   if (vals.every(v => v === 0)) return '';
-  return `<span class="sb-util-kda">${vals.join('/')}</span>`;
+  const total = vals.reduce((a, b) => a + b, 0);
+  return `<span class="sb-util-kda">${vals.join('/')}</span><span class="sb-util-total">${total}</span>`;
 }
 
 /* ── PLAYER EXPAND PANEL ─────────────────────────────────────── */
@@ -1024,8 +1057,12 @@ function togglePlayerExpand(rowId, playerRow) {
   if (caret) caret.style.transform = !isOpen ? 'rotate(90deg)' : '';
 }
 
-function buildPlayerPanel(p) {
+function buildPlayerPanel(p, rounds) {
   const SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' };
+
+  // Resolve ability names for this player's agent from the assets table
+  const agentAssets = ((window.MATCH_HISTORY_DATA?.assets?.agents) || {})[p.agent];
+  const abilityNames = agentAssets?.abilities?.ability_names || {};
 
   // ── Stats panel ──────────────────────────────────────────────
   const kdaRatio = p.deaths > 0 ? (p.kills / p.deaths) : p.kills;
@@ -1082,18 +1119,40 @@ function buildPlayerPanel(p) {
   const casts = p.abilityCasts;
   if (casts) {
     const maxVal = Math.max(casts.c||0, casts.q||0, casts.e||0, casts.x||0, 1);
+    const abilityIcons = agentAssets?.abilities?.ability_icons || {};
+    const abilityDescs = agentAssets?.abilities?.ability_descriptions || {};
+
     ['c','q','e','x'].forEach(k => {
-      const v   = casts[k] ?? 0;
-      const pct = Math.min(100, (v / maxVal) * 100);
-      const col = SLOT_COL[k];
+      const v    = casts[k] ?? 0;
+      const pct  = Math.min(100, (v / maxVal) * 100);
+      const col  = SLOT_COL[k];
+      const name = abilityNames[k] || k.toUpperCase();
+      const desc = abilityDescs[k] || '';
+      const rowId = 'util-' + Math.random().toString(36).slice(2, 9);
+
+      const iconSrc = abilityIcons[k];
+      const iconHtml = iconSrc
+        ? `<img class="sb-pex-util-icon" src="${iconSrc}" alt="${name}" style="filter:drop-shadow(0 0 3px ${col}66);" onerror="this.outerHTML='<span class=sb-pex-util-icon-fallback style=color:${col}>${k.toUpperCase()}</span>'">`
+        : `<span class="sb-pex-util-icon-fallback" style="color:${col}">${k.toUpperCase()}</span>`;
+
+      const cpr  = (rounds && rounds > 0) ? `<span class="sb-pex-util-cpr">${(v / rounds).toFixed(2)}/r</span>` : '';
+
+      const descHtml = desc
+        ? `<div class="sb-pex-util-desc" id="${rowId}-desc">${desc}</div>`
+        : '';
+      const clickAttr = desc
+        ? `onclick="event.stopPropagation();var r=this;r.classList.toggle('open');"` : '';
+
       utilInner += `
-        <div class="sb-pex-util-row">
-          <span class="sb-pex-util-key" style="color:${col}">${k.toUpperCase()}</span>
+        <div class="sb-pex-util-row" ${clickAttr} title="${desc ? 'Click for ability details' : name}">
+          ${iconHtml}
+          <span class="sb-pex-util-name">${name}</span>
           <div class="sb-pex-util-track">
             <div class="sb-pex-util-fill" style="width:${pct}%;background:${col};opacity:.75;"></div>
           </div>
           <span class="sb-pex-util-val">${v}</span>
-        </div>`;
+          ${cpr}
+        </div>${descHtml}`;
     });
   } else {
     utilInner = `<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">No ability cast data.</div>`;
@@ -1103,9 +1162,6 @@ function buildPlayerPanel(p) {
     <div class="sb-pex-panel">
       <div class="sb-pex-title">Utility Usage</div>
       ${utilInner}
-      <!-- TODO: add CPR (casts-per-round) once round count is available per-player -->
-      <!-- TODO: add ability icons from agent_icon lookup table when wired into match_history.js -->
-      <div class="sb-pex-stub">per-round cast rate requires round count per player</div>
     </div>`;
 
   // ── Links panel ───────────────────────────────────────────────
@@ -1153,7 +1209,7 @@ function buildPlayerPanel(p) {
 }
 
 /* ── SCOREBOARD ROW ──────────────────────────────────────────── */
-function sbRow(p) {
+function sbRow(p, rounds) {
   const adrStr = p.adr != null ? p.adr : '—';
   const hsStr  = p.hs  != null ? p.hs.toFixed(1)+'%' : '—';
   const fbStr  = p.firstBloods != null ? p.firstBloods : '—';
@@ -1163,8 +1219,8 @@ function sbRow(p) {
 
   // Party dot
   let partyDotHtml = '';
-  if (p.inParty && p.partyId) {
-    const color = partyColor(p.partyId);
+  if (p.inParty && p.partyColor) {
+    const color = p.partyColor;
     partyDotHtml = `<span class="party-dot" style="background:${color};box-shadow:0 0 4px ${color};" title="Party member"></span>`;
   } else {
     partyDotHtml = `<span class="party-dot party-solo"></span>`;
@@ -1186,8 +1242,8 @@ function sbRow(p) {
           ${rankBadge(p.rank, p.rankFull)}
         </div>
       </td>
-      <td class="util-cell">${utilChips(p.abilityCasts)}</td>
       <td class="sb-kda">${p.kda}</td>
+      <td class="util-cell">${utilChips(p.abilityCasts)}</td>
       <td class="sb-acs-val">${p.acs}</td>
       <td>${adrStr}</td>
       <td class="${hsClass(p.hs)}">${hsStr}</td>
@@ -1195,7 +1251,7 @@ function sbRow(p) {
       <td class="${fdCls}">${fdStr}</td>
     </tr>
     <tr class="sb-pex-row" id="${rowId}">
-      <td colspan="8">${buildPlayerPanel(p)}</td>
+      <td colspan="8">${buildPlayerPanel(p, rounds)}</td>
     </tr>`;
 }
 
@@ -1215,14 +1271,14 @@ function renderScoreboard(m) {
     ? `<span style="color:var(--win);font-size:11px;font-family:var(--display);font-weight:700;">WON · ${m.scoreThem}</span>`
     : `<span style="color:var(--text-dim);font-size:11px;">LOST · ${m.scoreThem}</span>`;
 
-  const seasonStr = m.season ? m.season.toUpperCase().replace('E','E').replace('A',' · A') : 'E11A2';
+  const seasonStr = m.season ? m.season.toUpperCase().replace('E','E').replace('A',' · A') : '[error]';
 
   const thead = (teamKey) => `
     <thead>
       <tr>
         <th style="text-align:left;padding-left:22px;cursor:default;">Player</th>
-        <th data-col="util" onclick="sortTeam('${m.id}','${teamKey}','util',event)" title="Utility Usage">UTIL</th>
         <th data-col="kda"  onclick="sortTeam('${m.id}','${teamKey}','kda',event)">KDA</th>
+        <th data-col="util" onclick="sortTeam('${m.id}','${teamKey}','util',event)" title="Utility Usage">c/q/e/x</th>
         <th data-col="acs"  onclick="sortTeam('${m.id}','${teamKey}','acs',event)">ACS</th>
         <th data-col="adr"  onclick="sortTeam('${m.id}','${teamKey}','adr',event)">ADR</th>
         <th data-col="hs"   onclick="sortTeam('${m.id}','${teamKey}','hs',event)">HS%</th>
@@ -1249,14 +1305,14 @@ function renderScoreboard(m) {
       <div class="sb-team-label blue-team"><span>Blue Team</span>${blueLabel}</div>
       <table class="sb-table sb-table-blue">
         ${thead('blue')}
-        <tbody class="sb-tbody-blue">${sb.blue.map(sbRow).join('')}</tbody>
+        <tbody class="sb-tbody-blue">${sb.blue.map(p => sbRow(p, m.rounds)).join('')}</tbody>
       </table>
     </div>
     <div class="sb-team-block">
       <div class="sb-team-label red-team"><span>Red Team</span>${redLabel}</div>
       <table class="sb-table sb-table-red">
         ${thead('red')}
-        <tbody class="sb-tbody-red">${sb.red.map(sbRow).join('')}</tbody>
+        <tbody class="sb-tbody-red">${sb.red.map(p => sbRow(p, m.rounds)).join('')}</tbody>
       </table>
     </div>`;
 }

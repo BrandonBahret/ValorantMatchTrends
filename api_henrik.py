@@ -2034,7 +2034,7 @@ class MatchMetadata:
         self.premier_info:        "MatchMetadataPremierInfo" = ji.get("premier_info", cast=MatchMetadataPremierInfo)
         self.region:              RegionsEnum  = ji.get("region")
         self.game_version:        str          = ji.get("game_version")    # e.g. "release-03.12-shipping-16-649370"
-        self.game_length:         int          = ji.get("game_length")     # milliseconds
+        self.game_length:         int          = ji.get("game_length")     # seconds
         self.game_start:          int          = ji.get("game_start")      # Unix timestamp (seconds)
         self.game_start_patched:  str          = ji.get("game_start_patched")
         self.rounds_played:       int          = ji.get("rounds_played")

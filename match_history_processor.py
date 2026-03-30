@@ -25,6 +25,7 @@ class MatchHistoryProcessor:
         self.api = UnofficialApi()
         self.db = db
         
+        self.db.update_match_history_for_puuid(puuid)
         self.my_account: PlayerProfile = self.db.get_profile_by_puuid(puuid)
         
         self.timespan = timespan

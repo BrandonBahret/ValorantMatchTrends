@@ -245,8 +245,15 @@ class AnalysisEngine:
             "",
             "Opponent Role Distribution",
         ]
-        for role, pct in sorted(role_pcts.items()):
-            summary_lines.append(f"  {role:<14} {pct}")
+        # role_pcts shape: { map: { rank: { role: float } } }
+        for map_name in sorted(role_pcts):
+            summary_lines.append(f"  {map_name}")
+            for rank_name in sorted(role_pcts[map_name]):
+                role_vals = role_pcts[map_name][rank_name]
+                parts = "  ".join(
+                    f"{r}: {v:.1f}%" for r, v in sorted(role_vals.items())
+                )
+                summary_lines.append(f"    {rank_name:<12} {parts}")
         with open(out_dir / "summary.txt", "w") as f:
             f.write("\n".join(summary_lines))
         self.log("💾  Saved summary.txt")

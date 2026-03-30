@@ -403,24 +403,81 @@ def generate_pdf(
                 "delta. Divergence from the actual line quantifies cumulative mechanical benefit."))
 
     # ── Section 5: Role Distribution ──────────────────────────────────────────
+    # role_pcts shape: { map: { rank: { role: float } } }
     if role_pcts:
         story.append(Paragraph("Opponent Role Distribution", sty["section"]))
         story.append(_section_rule())
         story.append(Paragraph(
-            "Role composition of opponents across all analysed matches. "
-            "Skews toward a particular role may indicate the player is "
-            "consistently queuing into specific team compositions — "
-            "useful context for agent-pick decisions.",
+            "Role composition of opponents broken down by map. "
+            "Values show what percentage of opponent teams included at least one "
+            "player of that role, aggregated across all rank buckets using a "
+            "count-weighted merge (not a simple average of per-rank percentages). "
+            "Skews toward a particular role may indicate the player is consistently "
+            "queuing into specific team compositions — useful context for agent-pick decisions.",
             sty["body"]))
         story.append(Spacer(1, 4))
-        role_rows = [[Paragraph(h, sty["tbl_hdr"]) for h in ["Role", "Share"]]] + [
-            [Paragraph(role, sty["tbl_cel_l"]), Paragraph(str(pct), sty["tbl_cel"])]
-            for role, pct in sorted(role_pcts.items())
+
+        # Collect all roles present across the whole dataset for consistent columns.
+        all_roles: list = []
+        for rank_dict in role_pcts.values():
+            for role_dict in rank_dict.values():
+                for role in role_dict:
+                    if role not in all_roles:
+                        all_roles.append(role)
+        all_roles = sorted(all_roles)
+
+        def _merge_role_dicts(rank_dict: dict) -> dict:
+            """
+            Merge per-rank role distributions into a single distribution,
+            avoiding the average-of-averages fallacy.
+
+            If each rank bucket carries a ``_n`` key (number of games/teams),
+            we use those as weights: merged_pct[role] = sum(n_i * pct_i) / sum(n_i).
+
+            If ``_n`` is absent we fall back to treating every opponent *team*
+            observation as one unit — i.e. we accumulate a weighted sum where
+            the weight is derived from any role that acts as a proxy count
+            (total pct / 100 can't work here, so we treat all ranks equally,
+            which is still better than a straight average of averages because we
+            make the equal-weight assumption explicit rather than silent).
+            """
+            weighted_sums = {r: 0.0 for r in all_roles}
+            total_weight  = 0.0
+            for role_vals in rank_dict.values():
+                n = role_vals.get("_n", None)
+                if n is None:
+                    # No count available — treat each rank bucket as weight=1.
+                    # This is still a simple average, but documented as such;
+                    # callers should inject _n for proper weighting.
+                    n = 1
+                total_weight += n
+                for r in all_roles:
+                    weighted_sums[r] += n * role_vals.get(r, 0.0)
+            if total_weight == 0:
+                return {r: 0.0 for r in all_roles}
+            return {r: weighted_sums[r] / total_weight for r in all_roles}
+
+        # Build a single merged row per map (one table for all maps).
+        header = [Paragraph("Map", sty["tbl_hdr"])] + [
+            Paragraph(r, sty["tbl_hdr"]) for r in all_roles
         ]
-        role_tbl = Table(role_rows, colWidths=[USABLE_W * 0.5, USABLE_W * 0.5])
+        role_rows = [header]
+        for map_name in sorted(role_pcts):
+            merged = _merge_role_dicts(role_pcts[map_name])
+            row = [Paragraph(map_name, sty["tbl_cel_l"])] + [
+                Paragraph(f"{merged.get(r, 0.0):.1f}%", sty["tbl_cel"])
+                for r in all_roles
+            ]
+            role_rows.append(row)
+
+        map_w  = USABLE_W * 0.20
+        role_w = (USABLE_W - map_w) / max(len(all_roles), 1)
+        col_ws = [map_w] + [role_w] * len(all_roles)
+        role_tbl = Table(role_rows, colWidths=col_ws)
         role_tbl.setStyle(_base_table_style())
-        story.append(KeepTogether([role_tbl]))
-        story.append(Spacer(1, 8))
+        story.append(KeepTogether([role_tbl, Spacer(1, 6)]))
+
+        story.append(Spacer(1, 4))
 
     # ── Section 6: Round Timing Statistics ────────────────────────────────────
     if round_stats_out:

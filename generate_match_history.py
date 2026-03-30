@@ -48,6 +48,7 @@ Output shape
             "bustPortrait":     str,
             "fullPortrait":     str,
             "killfeedPortrait": str,
+            "role":             str,   # "Duelist" | "Initiator" | "Controller" | "Sentinel"
           }, …
         }
       },
@@ -123,6 +124,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from api_henrik import Match
+from loadout_lens import AgentAbilityMap
 
 # ── Project imports (same assumptions as the other scripts) ──────────────────
 try:
@@ -303,6 +305,7 @@ def _build_assets() -> Dict[str, Any]:
           "bustPortrait":     str,
           "fullPortrait":     str,
           "killfeedPortrait": str,
+          "role":             str,   # "Duelist" | "Initiator" | "Controller" | "Sentinel"
         },
         …
       }
@@ -324,14 +327,46 @@ def _build_assets() -> Dict[str, Any]:
         }
 
     # ── Agents ────────────────────────────────────────────────────────────────
+    # AgentAbilityMap maps generic slot keys (c/q/e/x) to human-readable ability
+    # names, icons, and descriptions.  It's optional — if unavailable we fall
+    # back to generic key names ("C", "Q", etc.).
+    ability_map = None
+    try:
+        ability_map = AgentAbilityMap.build()
+    except Exception as exc:
+        print(f"  [AgentAbilityMap] could not build: {exc}")
+        
+        
+    
     agents_assets: Dict[str, Any] = {}
     for agent_name, agent_info in api.agents.items():  # Dict[str, AgentItem]
+        # Default to generic slot keys if ability_map is unavailable.
+        ability_names        = {"c": "C",  "q": "Q",  "e": "E",  "x": "X"}
+        ability_icons        = {"c": "",   "q": "",   "e": "",   "x": ""}
+        ability_descriptions = {"c": "",   "q": "",   "e": "",   "x": ""}
+        agent_media: Dict[str, Any] = {}
+
+        if ability_map:
+            slots = ability_map.slots(agent_name)
+            ability_names        = {k: slots.get(k, k.upper()) for k in ("c", "q", "e", "x")}
+            ability_icons        = ability_map.icon_slots(agent_name)
+            ability_descriptions = ability_map.description_slots(agent_name)
+            agent_media          = ability_map.agent_media(agent_name)
+        
+        role_obj = getattr(agent_info, "role", None)
         agents_assets[agent_name] = {
             "displayIcon":      getattr(agent_info, "displayIcon",      "") or "",
             "displayIconSmall": getattr(agent_info, "displayIconSmall", "") or "",
             "bustPortrait":     getattr(agent_info, "bustPortrait",     "") or "",
             "fullPortrait":     getattr(agent_info, "fullPortrait",     "") or "",
             "killfeedPortrait": getattr(agent_info, "killfeedPortrait", "") or "",
+            "role":             getattr(role_obj,   "displayName",      "") or "",
+            "abilities": {
+                "ability_names": ability_names, 
+                "ability_icons": ability_icons, 
+                "ability_descriptions": ability_descriptions,   
+                "agent_media": agent_media
+            }
         }
 
     return {"maps": maps_assets, "agents": agents_assets}
@@ -521,7 +556,7 @@ def build_match_history(
         game_start_ms = int(meta.game_start or 0)
         # game_length is in milliseconds in the Henrik API
         duration_raw  = getattr(meta, "game_length", None)
-        duration_sec  = int(duration_raw / 1000) if duration_raw else None
+        duration_sec  = int(duration_raw) if duration_raw else None
 
         # ── Cluster (server) ──────────────────────────────────────────────────
         cluster = (
