@@ -3,15 +3,15 @@
 .agents-layout {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  min-height: calc(100vh - 52px);
+  min-height: calc(100vh - var(--header-h));
 }
 .agents-sidebar {
   border-right: 1px solid var(--border);
   padding: var(--sidebar-padding);
   display: flex; flex-direction: column; gap: 12px;
   background: var(--panel);
-  position: sticky; top: 52px;
-  height: calc(100vh - 52px);
+  position: sticky; top: var(--header-h);
+  height: calc(100vh - var(--header-h));
   overflow-y: auto;
 }
 .agents-main { display: flex; flex-direction: column; min-height: 0; }
@@ -20,7 +20,7 @@
 .agents-sidebar .role-btn { width: 100%; text-align: left; padding: 7px 10px; }
 
 /* ── TABLE ──────────────────────────────────────────────── */
-.stats-table { overflow-x: auto; overflow-y: auto; height: calc(100vh - 52px); }
+.stats-table { overflow-x: auto; overflow-y: auto; height: calc(100vh - var(--header-h)); }
 table { width: 100%; border-collapse: collapse; }
 thead { position: sticky; top: 0; z-index: 10; }
 thead tr { background: #0d1520; border-bottom: 1px solid var(--border); }
@@ -202,6 +202,185 @@ input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color:
 .um-dual-track { flex: 1; height: 6px; background: var(--border); position: relative; }
 .um-dual-atk { height: 3px; position: absolute; top: 0; left: 0; }
 .um-dual-def { height: 3px; position: absolute; bottom: 0; left: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   AGENTS PAGE — RESOLUTION SCALING
+   Mirrors the breakpoints in shared.css so the agents table
+   scales consistently with the rest of the app.
+   1440p → min-width: 1440px   4K → min-width: 2560px
+═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1440px) {
+  /* ── sidebar controls ── */
+  .agents-sidebar                     { gap: 14px; }
+  .agents-sidebar .role-btn           { padding: 9px 12px; font-size: 11px; }
+
+  /* ── table header ── */
+  th                                  { padding: 13px 18px; font-size: 11px; }
+  th.sorted.desc::after,
+  th.sorted.asc::after                { font-size: 9px; }
+
+  /* ── table rows ── */
+  td                                  { padding: 13px 18px; }
+  .agent-icon                         { width: 42px; height: 42px; }
+  .agent-role                         { font-size: 10px; }
+  .expand-caret                       { font-size: 10px; }
+  .stat-num                           { font-size: 15px; }
+
+  /* ── role header separator ── */
+  .role-header-row td                 { padding: 9px 18px 9px 22px; font-size: 11px; }
+
+  /* ── util mini bars column ── */
+  .util-mini                          { min-width: 110px; gap: 4px; }
+  .um-lbl                             { width: 16px; height: 16px; }
+  .um-lbl img                         { width: 16px; height: 16px; }
+  .um-lbl-txt                         { font-size: 10px; }
+  .um-track                           { height: 4px; }
+  .um-val                             { font-size: 10px; width: 32px; }
+
+  /* ── util mini split (ATK/DEF) ── */
+  .util-mini-split                    { min-width: 126px; }
+  .um-dual-track                      { height: 7px; }
+
+  /* ── accordion content ── */
+  .acc-content                        { padding: 22px 26px; }
+  .acc-grid-2                         { gap: 16px; margin-bottom: 16px; }
+  .acc-grid-3                         { gap: 16px; }
+  .acc-panel                          { padding: 18px; }
+  .acc-title                          { font-size: 11px; margin-bottom: 16px; }
+
+  /* ── CPR rows ── */
+  .cpr-row                            { gap: 12px; margin-bottom: 10px; }
+  .cpr-label                          { font-size: 12px; min-width: 188px; }
+  .cpr-slot                           { font-size: 10px; }
+  .cpr-track                          { height: 8px; }
+  .cpr-val                            { font-size: 12px; min-width: 48px; }
+
+  /* ── phase tabs ── */
+  .phase-tab                          { padding: 5px 12px; font-size: 11px; }
+
+  /* ── bar rows (map/agent breakdown) ── */
+  .bar-name                           { font-size: 12px; min-width: 148px; }
+  .bar-track                          { height: 6px; }
+  .bar-pct                            { font-size: 11px; min-width: 42px; }
+
+  /* ── spend cards ── */
+  .spend-val                          { font-size: 16px; }
+  .spend-lbl                          { font-size: 10px; }
+  .spend-card                         { padding: 12px 10px; }
+
+  /* ── ability detail panel ── */
+  .util-detail-panel                  { padding: 14px 18px; margin-top: 16px; }
+  .udp-icon                           { width: 44px; height: 44px; }
+  .udp-icon img                       { width: 32px; height: 32px; }
+  .udp-name                           { font-size: 12px; }
+  .udp-slot-badge                     { font-size: 10px; }
+  .udp-cpr                            { font-size: 11px; }
+  .udp-desc                           { font-size: 12px; }
+
+  /* ── shield mini ── */
+  .shield-mini                        { min-width: 100px; }
+  .sm-bar                             { height: 6px; }
+  .sm-labels                          { font-size: 10px; }
+
+  /* ── acc note ── */
+  .acc-note                           { font-size: 11px; }
+
+  /* ── delta bars ── */
+  .util-delta-lbl                     { font-size: 10px; min-width: 58px; }
+  .util-delta-val                     { font-size: 10px; min-width: 48px; }
+  .util-delta-track                   { height: 5px; }
+  .util-delta-atk-bar,
+  .util-delta-def-bar                 { height: 5px; }
+
+  /* ── sidebar inline inputs (override inline styles via higher specificity) ── */
+  .agents-sidebar input[type=text]    { font-size: 13px !important; padding: 9px 12px 9px 28px !important; }
+  .agents-sidebar input[type=number]  { font-size: 13px !important; padding: 9px 12px !important; }
+  .agents-sidebar select              { font-size: 13px !important; padding: 9px 12px !important; }
+  .agents-sidebar [style*="font-size:9px"],
+  .agents-sidebar [style*="font-size: 9px"]  { font-size: 10px !important; }
+}
+
+@media (min-width: 2560px) {
+  /* ── sidebar controls ── */
+  .agents-sidebar                     { gap: 18px; }
+  .agents-sidebar .role-btn           { padding: 11px 14px; font-size: 13px; }
+
+  /* ── table header ── */
+  th                                  { padding: 16px 22px; font-size: 13px; }
+
+  /* ── table rows ── */
+  td                                  { padding: 16px 22px; }
+  .agent-icon                         { width: 52px; height: 52px; }
+  .agent-role                         { font-size: 12px; }
+  .expand-caret                       { font-size: 12px; }
+  .stat-num                           { font-size: 18px; }
+
+  /* ── role header separator ── */
+  .role-header-row td                 { padding: 11px 22px 11px 28px; font-size: 13px; }
+
+  /* ── util mini bars ── */
+  .util-mini                          { min-width: 136px; gap: 5px; }
+  .um-lbl                             { width: 19px; height: 19px; }
+  .um-lbl img                         { width: 19px; height: 19px; }
+  .um-lbl-txt                         { font-size: 12px; }
+  .um-track                           { height: 5px; }
+  .um-val                             { font-size: 12px; width: 38px; }
+
+  /* ── util mini split ── */
+  .util-mini-split                    { min-width: 154px; }
+  .um-dual-track                      { height: 9px; }
+
+  /* ── accordion ── */
+  .acc-content                        { padding: 28px 34px; }
+  .acc-panel                          { padding: 22px; }
+  .acc-title                          { font-size: 13px; margin-bottom: 20px; }
+
+  /* ── CPR rows ── */
+  .cpr-label                          { font-size: 14px; min-width: 220px; }
+  .cpr-slot                           { font-size: 12px; }
+  .cpr-track                          { height: 10px; }
+  .cpr-val                            { font-size: 14px; min-width: 56px; }
+
+  /* ── phase tabs ── */
+  .phase-tab                          { padding: 6px 14px; font-size: 13px; }
+
+  /* ── bar rows ── */
+  .bar-name                           { font-size: 14px; min-width: 174px; }
+  .bar-track                          { height: 7px; }
+  .bar-pct                            { font-size: 13px; min-width: 50px; }
+
+  /* ── spend cards ── */
+  .spend-val                          { font-size: 20px; }
+  .spend-lbl                          { font-size: 12px; }
+  .spend-card                         { padding: 16px 12px; }
+
+  /* ── ability detail panel ── */
+  .util-detail-panel                  { padding: 18px 22px; }
+  .udp-icon                           { width: 54px; height: 54px; }
+  .udp-icon img                       { width: 40px; height: 40px; }
+  .udp-name                           { font-size: 14px; }
+  .udp-slot-badge                     { font-size: 12px; }
+  .udp-cpr                            { font-size: 13px; }
+  .udp-desc                           { font-size: 14px; }
+
+  /* ── shield mini ── */
+  .shield-mini                        { min-width: 120px; }
+  .sm-bar                             { height: 8px; }
+  .sm-labels                          { font-size: 12px; }
+
+  /* ── acc note ── */
+  .acc-note                           { font-size: 13px; }
+
+  /* ── delta bars ── */
+  .util-delta-lbl                     { font-size: 12px; min-width: 68px; }
+  .util-delta-val                     { font-size: 12px; min-width: 58px; }
+
+  /* ── sidebar inline inputs ── */
+  .agents-sidebar input[type=text]    { font-size: 16px !important; padding: 11px 14px 11px 32px !important; }
+  .agents-sidebar input[type=number]  { font-size: 16px !important; padding: 11px 14px !important; }
+  .agents-sidebar select              { font-size: 16px !important; padding: 11px 14px !important; }
+}
 </style>
 
 <div class="agents-layout">

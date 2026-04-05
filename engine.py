@@ -189,11 +189,15 @@ class AnalysisEngine:
                              output_file=str(html_dir / "index.html"))
 
         # Copy our index.html dashboard (lives next to engine.py)
-        webpage_html_files = ["agents.html", "index.html", "match-history.html", "meta.html", "util.html", "shared.css"]
+        webpage_html_files = ["agents.html", "index.html", "match-history.html", "meta.html", "util.html", "shared.css", ("assets//agents_wiki.json", "agents_wiki.json")]
         for each_page in webpage_html_files:
-            dashboard_src = Path(__file__).parent / each_page
+            src = dst = each_page
+            if isinstance(each_page, tuple):
+                src, dst = each_page
+                
+            dashboard_src = Path(__file__).parent / src
             if dashboard_src.exists():
-                shutil.copy2(dashboard_src, html_dir / each_page)
+                shutil.copy2(dashboard_src, html_dir / dst)
                 self.log(f"💾  Copied {each_page} dashboard")
             else:
                 self.log(f"⚠️  {each_page} not found next to engine.py — skipped.")
@@ -355,15 +359,17 @@ class AnalysisEngine:
                 self.log("⚠️  No round data available — round_stats files skipped.")
                 return None
 
-            by_rank_raw: dict = defaultdict(list)
-            by_act_raw:  dict = defaultdict(list)
-            by_map_raw:  dict = defaultdict(list)
+            by_rank_raw:       dict = defaultdict(list)
+            by_act_raw:        dict = defaultdict(list)
+            by_map_raw:        dict = defaultdict(list)
+            by_map_by_act_raw: dict = defaultdict(lambda: defaultdict(list))
             for r in all_rounds:
                 k = TIER_NORMALISE.get(r["tier_name"])
                 if k:
                     by_rank_raw[k].append(r)
                 by_act_raw[r["act"]].append(r)
                 by_map_raw[r["map"]].append(r)
+                by_map_by_act_raw[r["map"]][r["act"]].append(r)
 
             round_stats_out = {
                 "meta": {
@@ -380,6 +386,10 @@ class AnalysisEngine:
                 "by_rank": {k: compute_stats(v) for k, v in by_rank_raw.items() if v},
                 "by_act":  {k: compute_stats(v) for k, v in by_act_raw.items()  if v},
                 "by_map":  {k: compute_stats(v) for k, v in by_map_raw.items()  if v},
+                "by_map_by_act": {
+                    map_name: {act: compute_stats(rounds) for act, rounds in acts_dict.items() if rounds}
+                    for map_name, acts_dict in by_map_by_act_raw.items()
+                },
             }
 
             # JS file — consumed by index.html in interactive_report/

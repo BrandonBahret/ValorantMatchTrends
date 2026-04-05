@@ -534,26 +534,10 @@ def build_match_history(
         red_rows.sort(key=lambda r:  r["acs"], reverse=True)
 
         # ── Queue / game mode ─────────────────────────────────────────────────
-        queue = (
-            getattr(meta, "queue",     None) or
-            getattr(meta, "mode",      None) or
-            getattr(meta, "game_mode", None) or
-            "Competitive"
-        )
-        # Normalise the queue string (API sometimes returns raw enum-like values)
-        _queue_map = {
-            "competitive":  "Competitive",
-            "unrated":      "Unrated",
-            "deathmatch":   "Deathmatch",
-            "spikerush":    "Spike Rush",
-            "escalation":   "Escalation",
-            "teamdeathmatch": "Team DM",
-            "swiftplay":    "Swift Play",
-        }
-        queue_norm = _queue_map.get(str(queue).lower().replace(" ", ""), str(queue).title())
-
+        queue = str(meta.mode)
+        
         # ── Timestamp + duration ──────────────────────────────────────────────
-        game_start_ms = int(meta.game_start or 0)
+        game_start_ms = int(meta.game_start or 0) * 1000
         # game_length is in milliseconds in the Henrik API
         duration_raw  = getattr(meta, "game_length", None)
         duration_sec  = int(duration_raw) if duration_raw else None
@@ -568,7 +552,7 @@ def build_match_history(
         match_records.append({
             "id":             mid,
             "map":            meta.map or "Unknown",
-            "queue":          queue_norm,
+            "queue":          queue,
             "cluster":        cluster,
             "result":         result,
             "score_us":       score_us,

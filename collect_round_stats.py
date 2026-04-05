@@ -353,16 +353,16 @@ def compute_stats(rounds: List[dict]) -> dict:
         "mean":              safe(durations, statistics.mean),
         "p25":               round(percentile(durations, 25), 3),
         "p75":               round(percentile(durations, 75), 3),
-        "sd":                safe(durations, statistics.pstdev),
+        "sd":                safe(durations, statistics.stdev),
         "plant_rate":        round(len(planted) / len(rounds), 4),
         "median_plant_time": round(percentile(plant_times, 50), 3) if plant_times else 0.0,
         "mean_plant_time":   safe(plant_times, statistics.mean),
-        "sd_plant_time":     safe(plant_times, statistics.pstdev),
+        "sd_plant_time":     safe(plant_times, statistics.stdev),
         "p25_plant_time":    round(percentile(plant_times, 25), 3) if plant_times else 0.0,
         "p75_plant_time":    round(percentile(plant_times, 75), 3) if plant_times else 0.0,
         "median_post_plant": round(percentile(post_plants, 50), 3) if post_plants else 0.0,
         "mean_post_plant":   safe(post_plants, statistics.mean),
-        "sd_post_plant":     safe(post_plants, statistics.pstdev),
+        "sd_post_plant":     safe(post_plants, statistics.stdev),
         "p25_post_plant":    round(percentile(post_plants, 25), 3) if post_plants else 0.0,
         "p75_post_plant":    round(percentile(post_plants, 75), 3) if post_plants else 0.0,
         "defuse_rate":       round(len(defused) / len(planted), 4) if planted else 0.0,
@@ -500,9 +500,10 @@ def run(
     # 5. Compute statistics sliced by rank / act / map
     print("[INFO] Computing statistics …")
 
-    by_rank_raw: Dict[str, List[dict]] = defaultdict(list)
-    by_act_raw:  Dict[str, List[dict]] = defaultdict(list)
-    by_map_raw:  Dict[str, List[dict]] = defaultdict(list)
+    by_rank_raw:       Dict[str, List[dict]] = defaultdict(list)
+    by_act_raw:        Dict[str, List[dict]] = defaultdict(list)
+    by_map_raw:        Dict[str, List[dict]] = defaultdict(list)
+    by_map_by_act_raw: Dict[str, Dict[str, List[dict]]] = defaultdict(lambda: defaultdict(list))
 
     for r in all_rounds:
         k = TIER_NORMALISE.get(r["tier_name"])
@@ -510,6 +511,7 @@ def run(
             by_rank_raw[k].append(r)
         by_act_raw[r["act"]].append(r)
         by_map_raw[r["map"]].append(r)
+        by_map_by_act_raw[r["map"]][r["act"]].append(r)
 
     output = {
         "meta": {
@@ -529,6 +531,10 @@ def run(
         "by_rank": {k: compute_stats(v) for k, v in by_rank_raw.items() if v},
         "by_act":  {k: compute_stats(v) for k, v in by_act_raw.items()  if v},
         "by_map":  {k: compute_stats(v) for k, v in by_map_raw.items()  if v},
+        "by_map_by_act": {
+            map_name: {act: compute_stats(rounds) for act, rounds in acts_dict.items() if rounds}
+            for map_name, acts_dict in by_map_by_act_raw.items()
+        },
     }
 
     if include_raw:

@@ -14,7 +14,7 @@
   <style>
     /* index-specific overrides: util page is narrower, account for sticky header */
     #page-util .util-app {
-      min-height: calc(100vh - 65px);
+      min-height: calc(100vh - var(--header-h));
     }
 
     /* ── HEADER ─────────────────────────────────────────────── */
@@ -201,6 +201,12 @@
       display: block;
     }
 
+    /* Iframe-hosted pages need explicit height so the iframe fills the viewport */
+    #page-util,
+    #page-matchhistory {
+      height: calc(100vh - var(--header-h));
+    }
+
     /* ── CONTROLS BAR ───────────────────────────────────────── */
     .controls {
       background: #0a0e16;
@@ -211,7 +217,7 @@
       flex-wrap: nowrap;
       align-items: center;
       position: sticky;
-      top: 52px;
+      top: var(--header-h);
       z-index: 40;
       box-shadow: 0 4px 16px rgba(0, 0, 0, .55);
     }
@@ -237,7 +243,7 @@
       border: 1px solid var(--border);
       color: var(--text-bright);
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 14px;
       padding: 7px 10px;
       border-radius: 1px;
       outline: none;
@@ -273,7 +279,7 @@
       background: var(--bg3);
       color: var(--text-dim);
       font-family: var(--mono);
-      font-size: 10px;
+      font-size: 14px;
       cursor: pointer;
       transition: all .15s;
       white-space: nowrap;
@@ -307,7 +313,7 @@
     .meta-layout {
       display: grid;
       grid-template-columns: var(--sidebar-width) 1fr;
-      min-height: calc(100vh - 65px);
+      min-height: calc(100vh - var(--header-h));
     }
 
     .meta-sidebar {
@@ -320,7 +326,7 @@
       position: sticky;
       height: 100%;
       max-height: 100vh;
-      top: 52px;
+      top: var(--header-h);
     }
 
     .meta-main {
@@ -756,13 +762,405 @@
       font-family: var(--display);
       font-size: 11px;
     }
+
+    /* ═══════════════════════════════════════════════════════════════
+       INDEX.HTML — RESOLUTION SCALING
+       Mirrors the breakpoints in shared.css. Covers the header,
+       nav, controls bar, meta page, heatmap, and rankings panel.
+       1440p → min-width: 1440px   4K → min-width: 2560px
+    ═══════════════════════════════════════════════════════════════ */
+
+    @media (min-width: 1440px) {
+      /* ── header ── */
+      header                            { height: 60px; padding: 0 34px 0 28px; }
+      .logo-text                        { font-size: 14px; }
+      .logo-sub                         { font-size: 10px; }
+      .logo-mark                        { width: 34px; height: 34px; }
+      .logo                             { padding-right: 32px; }
+      .nav-tab                          { font-size: 11px; padding: 0 24px; }
+      .nav-tab-dot                      { width: 6px; height: 6px; }
+      .header-meta                      { font-size: 12px; }
+
+      /* ── controls bar ── */
+      .controls                         { top: 60px; padding: 12px 28px; gap: 16px; }
+      .control-group label              { font-size: 11px; }
+      select, input[type=number]        { font-size: 13px; padding: 9px 12px; }
+      .role-btn                         { font-size: 11px; padding: 8px 8px; }
+      .checkbox-group                   { font-size: 11px; }
+      input[type=checkbox]              { width: 16px; height: 16px; }
+
+      /* ── agents layout adjustments (account for taller header) ── */
+      .agents-sidebar                   { top: 60px; height: calc(100vh - 60px); }
+      .stats-table                      { height: calc(100vh - 60px); }
+      .agents-layout                    { min-height: calc(100vh - 60px); }
+
+      /* ── meta page sidebar ── */
+      .meta-sidebar                     { top: 60px; }
+      .meta-layout                      { min-height: calc(100vh - 73px); }
+      .meta-main                        { padding: 26px; gap: 26px; }
+
+      /* ── panel headers ── */
+      .panel-hdr                        { /* uses --panel-hdr-size token, already handled by shared.css */ }
+      .panel-body                       { padding: 18px; }
+
+      /* ── section titles ── */
+      .section-title                    { font-size: 11px; margin-bottom: 16px; }
+
+      /* ── pfbtn (phase filter buttons) ── */
+      .pfbtn                            { font-size: 14px; padding: 10px 14px; margin-bottom: 5px; }
+
+      /* ── sbtn (sort buttons) ── */
+      .sbtn                             { font-size: 12px; padding: 8px 8px; }
+
+      /* ── phase distribution cards ── */
+      .phase-dist-row                   { gap: 12px; margin-bottom: 6px; }
+      .pd-card                          { padding: 16px; }
+      .pd-name                          { font-size: 10px; margin-bottom: 8px; }
+      .pd-pct                           { font-size: 28px; }
+      .pd-sub                           { font-size: 11px; margin-top: 6px; }
+
+      /* ── two-col + meta panel ── */
+      .meta-two-col                     { gap: 16px; }
+      .meta-panel                       { padding: 20px; }
+
+      /* ── heatmap ── */
+      .hm-table                         { font-size: 12px; }
+      .hm-table th                      { padding: 10px 14px; font-size: 10px; }
+      .hm-table td                      { padding: 8px 12px; }
+      .hm-agent                         { min-width: 150px; gap: 10px; }
+      .hm-icon                          { width: 26px; height: 26px; }
+      .hm-val                           { font-size: 11px; padding: 5px 10px; min-width: 72px; }
+      .hm-wr-val                        { font-size: 12px; }
+      .hm-table th.hm-wr-th             { font-size: 9px; }
+      .hm-cell                          { min-width: 90px; }
+      .hm-wr-col                        { min-width: 82px; }
+
+      /* ── rankings grid ── */
+      .rank-col-hdr                     { font-size: 11px; padding: 12px 14px; }
+      .rank-item                        { padding: 9px 14px; }
+      .rank-pos                         { font-size: 10px; min-width: 22px; }
+      .rank-agent                       { font-size: 13px; }
+      .rank-cpr                         { font-size: 12px; }
+
+      /* ── tooltips ── */
+      [data-tip]::after                 { font-size: 11px; padding: 9px 13px; max-width: 270px; }
+    }
+
+    @media (min-width: 2560px) {
+      /* ── header ── */
+      header                            { height: 72px; padding: 0 42px 0 36px; }
+      .logo-text                        { font-size: 16px; letter-spacing: .24em; }
+      .logo-sub                         { font-size: 12px; }
+      .logo-mark                        { width: 42px; height: 42px; }
+      .logo                             { padding-right: 40px; gap: 16px; }
+      .nav-tab                          { font-size: 13px; padding: 0 30px; }
+      .nav-tab-dot                      { width: 7px; height: 7px; }
+      .header-meta                      { font-size: 14px; }
+
+      /* ── controls bar ── */
+      .controls                         { top: 72px; padding: 14px 36px; gap: 20px; }
+      .control-group label              { font-size: 13px; }
+      select, input[type=number]        { font-size: 16px; padding: 11px 14px; }
+      .role-btn                         { font-size: 13px; padding: 10px 10px; }
+      .checkbox-group                   { font-size: 13px; gap: 9px; }
+      input[type=checkbox]              { width: 18px; height: 18px; }
+
+      /* ── agents layout (4K header height) ── */
+      .agents-sidebar                   { top: 72px; height: calc(100vh - 72px); }
+      .stats-table                      { height: calc(100vh - 72px); }
+      .agents-layout                    { min-height: calc(100vh - 72px); }
+
+      /* ── meta page ── */
+      .meta-sidebar                     { top: 72px; }
+      .meta-layout                      { min-height: calc(100vh - 88px); }
+      .meta-main                        { padding: 34px; gap: 32px; }
+      .panel-body                       { padding: 22px; }
+      .section-title                    { font-size: 13px; margin-bottom: 20px; }
+
+      /* ── pfbtn / sbtn ── */
+      .pfbtn                            { font-size: 17px; padding: 13px 16px; }
+      .sbtn                             { font-size: 14px; padding: 10px 10px; }
+
+      /* ── phase dist cards ── */
+      .phase-dist-row                   { gap: 16px; }
+      .pd-card                          { padding: 20px; }
+      .pd-name                          { font-size: 12px; margin-bottom: 10px; }
+      .pd-pct                           { font-size: 36px; }
+      .pd-sub                           { font-size: 13px; margin-top: 8px; }
+
+      /* ── meta panels ── */
+      .meta-two-col                     { gap: 20px; }
+      .meta-panel                       { padding: 26px; }
+
+      /* ── heatmap ── */
+      .hm-table                         { font-size: 14px; }
+      .hm-table th                      { padding: 13px 17px; font-size: 12px; }
+      .hm-table td                      { padding: 10px 15px; }
+      .hm-agent                         { min-width: 180px; gap: 12px; }
+      .hm-icon                          { width: 32px; height: 32px; }
+      .hm-val                           { font-size: 13px; padding: 6px 12px; min-width: 88px; }
+      .hm-wr-val                        { font-size: 15px; }
+      .hm-table th.hm-wr-th             { font-size: 11px; }
+      .hm-cell                          { min-width: 110px; }
+      .hm-wr-col                        { min-width: 100px; }
+
+      /* ── rankings ── */
+      .rank-col-hdr                     { font-size: 13px; padding: 15px 18px; }
+      .rank-item                        { padding: 11px 18px; }
+      .rank-pos                         { font-size: 12px; min-width: 26px; }
+      .rank-agent                       { font-size: 16px; }
+      .rank-cpr                         { font-size: 14px; }
+
+      /* ── tooltips ── */
+      [data-tip]::after                 { font-size: 13px; padding: 11px 16px; max-width: 320px; }
+    }
+
+    /* ── EXTRACTED FROM INLINE STYLES ─────────────────────────── */
+
+    /* Header layout */
+    .header-left {
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* Util header right slot */
+    .util-header-right {
+      align-items: center;
+      gap: 24px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* Data report button in header */
+    .util-report-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .08em;
+      background: var(--bg3);
+      border: 1px solid var(--border-bright);
+      color: var(--cyan);
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    /* Current act label */
+    .util-act-label {
+      color: var(--yellow);
+    }
+
+    /* Sidebar panel-body compact variant */
+    .panel-body--sm {
+      padding: 10px 12px;
+    }
+
+    /* Sidebar panel-body column layout (Config panel) */
+    .panel-body--col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Sidebar section labels (Min Matches / Sort By / Order) */
+    .sidebar-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    /* Full-width inputs & selects inside sidebar */
+    .full-width {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Checkbox column wrapper in Config panel */
+    .checkbox-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 2px;
+    }
+
+    /* Search input wrapper */
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 10px 7px 26px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-bright);
+      font-family: var(--mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+      border-radius: 1px;
+    }
+
+    /* Rank note (hidden by default, toggled by JS) */
+    .rank-note {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      line-height: 1.6;
+      opacity: .6;
+    }
+
+    /* Agent column min-width */
+    .col-agent {
+      min-width: 180px;
+    }
+
+    /* Util CPR column */
+    .col-util {
+      min-width: 130px;
+    }
+
+    .col-util-inner {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .util-sort-btns {
+      display: flex;
+      gap: 3px;
+    }
+
+    /* Util sort mini-buttons (INV / ULT) */
+    .util-sort-btn {
+      font-family: var(--mono);
+      font-size: 9px;
+      padding: 2px 5px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: all .15s;
+      letter-spacing: .04em;
+    }
+
+    /* Page iframes */
+    .page-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Stats report modal */
+    .stats-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      background: #000000cc;
+      backdrop-filter: blur(3px);
+    }
+
+    .stats-modal__dialog {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(860px, 92vw);
+      max-height: 80vh;
+      background: var(--bg2);
+      border: 1px solid var(--border-bright);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stats-modal__header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg3);
+    }
+
+    .stats-modal__title {
+      font-family: var(--display);
+      font-size: 11px;
+      letter-spacing: .15em;
+      color: var(--cyan);
+    }
+
+    .stats-modal__close {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .stats-modal__body {
+      padding: 20px 24px;
+      margin: 0;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre;
+      flex: 1;
+    }
+
+    /* Meta page: section-title tight variant (reduced bottom margin) */
+    .section-title--tight {
+      margin-bottom: 12px;
+    }
+
+    /* Meta page: description text under "Weapon Buy Rates by Agent" */
+    .meta-description {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .meta-description__highlight {
+      color: var(--cyan);
+    }
+
+    /* Weapon config header right slot */
+    .wep-config-hdr-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* rank-note always-visible variant */
+    .rank-note--always {
+      margin-top: 8px;
+    }
   </style>
 </head>
 
 <body>
 
   <header>
-    <div style="display:flex;align-items:stretch;">
+    <div class="header-left">
       <div class="logo">
         <div class="logo-mark">
           <svg viewBox="0 0 32 32" fill="#ff4655" xmlns="http://www.w3.org/2000/svg">
@@ -788,18 +1186,16 @@
       </nav>
     </div>
     <div class="header-meta" id="header-meta">loading...</div>
-    <div id="util-header-right"
-      style="display:none;align-items:center;gap:24px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">
+    <div id="util-header-right" class="util-header-right" style="display:none;">
       <span id="util-data-source-badge"><span class="util-status-dot"></span>load round_stats.js to use real data</span>
       <button id="util-btn-stats-report-hdr"
         onclick="document.getElementById('util-iframe').contentWindow.postMessage({type:'open-stats-report'},'*')"
-        style="display:none;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;
-             background:var(--bg3);border:1px solid var(--border-bright);color:var(--cyan);
-             padding:6px 14px;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--cyan)'"
+        class="util-report-btn" style="display:none;"
+        onmouseover="this.style.borderColor='var(--cyan)'"
         onmouseout="this.style.borderColor='var(--border-bright)'">
         ▤ DATA REPORT
       </button>
-      <span id="util-current-act-label" style="color:var(--yellow)">—</span>
+      <span id="util-current-act-label" class="util-act-label">—</span>
     </div>
   </header>
 
@@ -813,7 +1209,7 @@
       .agents-layout {
         display: grid;
         grid-template-columns: var(--sidebar-width) 1fr;
-        min-height: calc(100vh - 52px);
+        min-height: calc(100vh - var(--header-h));
       }
 
       .agents-sidebar {
@@ -824,8 +1220,8 @@
         gap: 12px;
         background: var(--panel);
         position: sticky;
-        top: 52px;
-        height: calc(100vh - 52px);
+        top: var(--header-h);
+        height: calc(100vh - var(--header-h));
         overflow-y: auto;
       }
 
@@ -850,7 +1246,7 @@
       .stats-table {
         overflow-x: auto;
         overflow-y: auto;
-        height: calc(100vh - 52px);
+        height: calc(100vh - var(--header-h));
       }
 
       table {
@@ -874,7 +1270,7 @@
         text-align: left;
         font-family: var(--mono);
         font-weight: 400;
-        font-size: 10px;
+        font-size: 11px;
         letter-spacing: .1em;
         color: var(--text-dim);
         text-transform: uppercase;
@@ -1000,6 +1396,25 @@
         border-color: var(--text-dim) !important;
       }
 
+      .util-scale-btn {
+        padding: 4px 8px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        transition: all .12s;
+        letter-spacing: .06em;
+        white-space: nowrap;
+      }
+      .util-scale-btn:hover { border-color: var(--border-bright); color: var(--text); }
+      .util-scale-btn.active {
+        border-color: var(--yellow);
+        color: var(--yellow);
+        background: rgba(255,232,77,.08);
+      }
+
       .util-sort-btn.active-inv {
         color: var(--cyan) !important;
         border-color: var(--cyan) !important;
@@ -1016,13 +1431,15 @@
         display: flex;
         flex-direction: column;
         gap: 3px;
-        min-width: 96px;
+        min-width: 0;
+        width: 100%;
       }
 
       .util-mini-row {
         display: flex;
         align-items: center;
         gap: 5px;
+        min-width: 0;
       }
 
       .um-lbl {
@@ -1051,9 +1468,11 @@
 
       .um-track {
         flex: 1;
+        min-width: 0;
         height: 3px;
         background: var(--border);
         position: relative;
+        overflow: hidden;
       }
 
       .um-fill {
@@ -1065,10 +1484,12 @@
 
       .um-val {
         font-family: var(--mono);
-        font-size: 9px;
+        font-size: 12px;
         color: var(--text-dim);
-        width: 28px;
+        min-width: 0;
+        flex-shrink: 0;
         text-align: right;
+        white-space: nowrap;
       }
 
       /* Clickable CPR rows in accordion */
@@ -1141,7 +1562,7 @@
 
       .udp-name {
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--text-bright);
         margin-bottom: 3px;
@@ -1158,7 +1579,7 @@
 
       .udp-cpr {
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 12px;
         color: var(--text-dim);
         margin-top: 6px;
       }
@@ -1168,7 +1589,7 @@
       }
 
       .udp-desc {
-        font-size: 11px;
+        font-size: 14px;
         color: var(--text);
         line-height: 1.55;
         margin: 5px 0 4px;
@@ -1252,20 +1673,26 @@
       .cpr-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         margin-bottom: 9px;
+        min-width: 0;
       }
 
       .cpr-label {
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: 14px;
         color: var(--text);
-        min-width: 170px;
+        min-width: 0;
+        width: 160px;
+        flex-shrink: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .cpr-slot {
         font-family: var(--mono);
-        font-size: 9px;
+        font-size: 14px;
         color: var(--text-dim);
         background: var(--bg3);
         border: 1px solid var(--border);
@@ -1280,6 +1707,7 @@
         background: var(--border);
         position: relative;
         min-width: 40px;
+        overflow: hidden;
       }
 
       .cpr-fill {
@@ -1292,8 +1720,10 @@
 
       .cpr-val {
         font-family: var(--display);
-        font-size: 11px;
-        min-width: 42px;
+        font-size: 14px;
+        min-width: 0;
+        flex-shrink: 0;
+        white-space: nowrap;
         text-align: right;
       }
 
@@ -1339,7 +1769,7 @@
 
       .bar-name {
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: 13px;
         color: var(--text);
         min-width: 130px;
         overflow: hidden;
@@ -1367,7 +1797,7 @@
 
       .bar-pct {
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 14px;
         color: var(--text-dim);
         min-width: 38px;
         text-align: right;
@@ -1403,7 +1833,7 @@
 
       .acc-note {
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-dim);
         margin-top: 10px;
         line-height: 1.8;
@@ -1427,7 +1857,7 @@
         background: var(--bg3);
         color: var(--text-dim);
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 12px;
         cursor: pointer;
         transition: all .15s;
         white-space: nowrap;
@@ -1446,7 +1876,7 @@
         align-items: center;
         gap: 7px;
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 12px;
         color: var(--text-dim);
       }
 
@@ -1502,12 +1932,11 @@
       <div class="agents-sidebar">
         <div class="panel">
           <div class="panel-hdr">Search</div>
-          <div class="panel-body" style="padding:10px 12px;">
-            <div style="position:relative;">
-              <span
-                style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--text-dim);pointer-events:none;">⌕</span>
+          <div class="panel-body panel-body--sm">
+            <div class="search-input-wrap">
+              <span class="search-icon">⌕</span>
               <input type="text" id="agentSearch" placeholder="Agent name…"
-                style="width:100%;box-sizing:border-box;padding:7px 10px 7px 26px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .2s;border-radius:1px;"
+                class="search-input"
                 oninput="agentsPage.renderTable()" onfocus="this.style.borderColor='var(--cyan)'"
                 onblur="this.style.borderColor='var(--border)'">
             </div>
@@ -1515,25 +1944,21 @@
         </div>
         <div class="panel">
           <div class="panel-hdr">Role</div>
-          <div class="panel-body" style="padding:10px 12px;">
+          <div class="panel-body panel-body--sm">
             <div id="roleFilters" class="role-grid"></div>
           </div>
         </div>
         <div class="panel">
           <div class="panel-hdr">Config</div>
-          <div class="panel-body" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+          <div class="panel-body panel-body--sm panel-body--col">
             <div>
-              <div
-                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
-                Min Matches</div>
-              <input type="number" id="minMatches" min="0" value="10" step="1" style="width:100%;box-sizing:border-box;"
+              <div class="sidebar-label">Min Matches</div>
+              <input type="number" id="minMatches" min="0" value="10" step="1" class="full-width"
                 data-tip="Hide agents seen in fewer&#10;than this many matches.&#10;Reduces small-sample noise.">
             </div>
             <div>
-              <div
-                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
-                Sort By</div>
-              <select id="sortBy" style="width:100%;box-sizing:border-box;">
+              <div class="sidebar-label">Sort By</div>
+              <select id="sortBy" class="full-width">
                 <option value="team_percentage">Team Pick Rate</option>
                 <option value="matches_seen_percentage">Matches Seen %</option>
                 <option value="win_rate">Win Rate</option>
@@ -1545,15 +1970,13 @@
               </select>
             </div>
             <div>
-              <div
-                style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">
-                Order</div>
-              <select id="sortOrder" style="width:100%;box-sizing:border-box;">
+              <div class="sidebar-label">Order</div>
+              <select id="sortOrder" class="full-width">
                 <option value="desc">Desc</option>
                 <option value="asc">Asc</option>
               </select>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;padding-top:2px;">
+            <div class="checkbox-col">
               <div class="checkbox-group"><input type="checkbox" id="groupByRole"><label for="groupByRole"
                   data-tip="Organise rows into labelled&#10;role sections.">Group by role</label></div>
               <div class="checkbox-group"><input type="checkbox" id="showUtil" checked><label for="showUtil"
@@ -1564,9 +1987,8 @@
         </div>
         <div class="panel">
           <div class="panel-hdr">Map</div>
-          <div class="panel-body" style="padding:10px 12px;">
-            <select id="agents-sel-map"
-              style="width:100%;box-sizing:border-box;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;"
+          <div class="panel-body panel-body--sm">
+            <select id="agents-sel-map" class="full-width"
               onchange="agentsPage.renderTable()">
               <option value="all">All Maps</option>
             </select>
@@ -1574,10 +1996,9 @@
         </div>
         <div class="panel">
           <div class="panel-hdr">Rank Filter</div>
-          <div class="panel-body" style="padding:10px 12px;">
+          <div class="panel-body panel-body--sm">
             <div class="rank-grid" id="agents-rank-grid"></div>
-            <div id="agents-rank-note"
-              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;display:none;">
+            <div id="agents-rank-note" class="rank-note" style="display:none;">
               No rank data in dataset.</div>
           </div>
         </div>
@@ -1588,7 +2009,7 @@
           <table>
             <thead>
               <tr>
-                <th style="min-width:180px;">Agent</th>
+                <th class="col-agent">Agent</th>
                 <th class="sortable" data-sort="teams"
                   data-tip="Number of distinct teams&#10;that ran this agent at&#10;least once.">Teams</th>
                 <th class="sortable" data-sort="team_percentage"
@@ -1601,15 +2022,13 @@
                   data-tip="Win rate excluding rounds&#10;where enemy ran same agent.">Non-Mirror WR</th>
                 <th class="sortable" data-sort="kda" data-tip="(Kills + Assists) ÷ Deaths.&#10;Averaged per player.">KDA
                 </th>
-                <th id="col-util" style="min-width:130px;"
+                <th id="col-util" class="col-util"
                   data-tip="Casts-per-round for each&#10;ability slot (C/Q/E/X).">
-                  <span style="display:flex;align-items:center;gap:6px;">Util CPR
-                    <span style="display:flex;gap:3px;">
+                  <span class="col-util-inner" id="col-util-label">Util CPR
+                    <span class="util-sort-btns">
                       <span class="util-sort-btn" data-sort="util_score"
-                        style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;"
-                        data-tip="Util Investment: C+Q+E+X CPR sum.">INV</span>
+                        data-tip="Util Investment: C+Q+E+X CPR sum.&#10;In CHARGE% mode: Utility Usage Score (UUS).">INV</span>
                       <span class="util-sort-btn" data-sort="ult_cpr"
-                        style="font-family:var(--mono);font-size:8px;padding:2px 5px;border:1px solid var(--border);cursor:pointer;color:var(--text-dim);transition:all .15s;letter-spacing:.04em;"
                         data-tip="Ult Usage Rate: X-slot CPR.">ULT</span>
                     </span>
                   </span>
@@ -1786,7 +2205,89 @@
         var agentsRanks = new Set();    // active/toggled ranks — populated by init IIFE
         var agentsRanksAll = new Set(); // all ranks present in data (never modified by clicks)
         var agentsMap = 'all';
-        var SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' }, CPR_MAX = 2.0;
+        var SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' }, CPR_MAX = 1.0;
+
+        // ── CHARGE-SCALE MODE ─────────────────────────────────────────────────────────
+        // 'raw'    = bars scale to CPR_MAX (1.0 = one cast per round), same as original
+        // 'charge' = bars scale to max possible CPR (charges-per-round), ult uses orb timing
+        var utilScaleMode = 'raw'; // toggled by the UUS button in the header
+
+        // Agent ability metadata: charges per slot, ult orb cost
+        // Auto-generated from agents_wiki.json
+        var AGENT_ABILITY_META = {
+          "Astra":    { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:7  },
+          "Breach":   { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:8  },
+          "Brimstone":{ charges: {"c":1,"q":1,"e":3,"x":1}, ult_orbs:8  },
+          "Chamber":  { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Clove":    { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:8  },
+          "Cypher":   { charges: {"c":2,"q":2,"e":1,"x":1}, ult_orbs:7  },
+          "Deadlock": { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:7  },
+          "Fade":     { charges: {"c":2,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Gekko":    { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Harbor":   { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:7  },
+          "Iso":      { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:7  },
+          "Jett":     { charges: {"c":2,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "KAYO":     { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:8  },
+          "Killjoy":  { charges: {"c":2,"q":1,"e":1,"x":1}, ult_orbs:9  },
+          "Miks":     { charges: {"c":2,"q":1,"e":2,"x":1}, ult_orbs:8  },
+          "Neon":     { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Omen":     { charges: {"c":2,"q":1,"e":2,"x":1}, ult_orbs:7  },
+          "Phoenix":  { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:6  },
+          "Raze":     { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:8  },
+          "Reyna":    { charges: {"c":2,"q":2,"e":2,"x":1}, ult_orbs:7  },
+          "Sage":     { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:7  },
+          "Skye":     { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:8  },
+          "Sova":     { charges: {"c":1,"q":2,"e":1,"x":1}, ult_orbs:8  },
+          "Tejo":     { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:9  },
+          "Veto":     { charges: {"c":2,"q":1,"e":1,"x":1}, ult_orbs:7  },
+          "Viper":    { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:9  },
+          "Vyse":     { charges: {"c":2,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Waylay":   { charges: {"c":1,"q":1,"e":1,"x":1}, ult_orbs:8  },
+          "Yoru":     { charges: {"c":1,"q":1,"e":2,"x":1}, ult_orbs:8  },
+        };
+
+        // Returns {c,q,e,x} max-possible-CPR for an agent (charge-scaled denominator)
+        // Util slots: max = charges (can buy and use all charges every round)
+        // Ult: max = 1 / ult_orbs (1 orb/round baseline → earliest possible reuse cadence)
+        function getMaxCPR(agentName) {
+          var meta = AGENT_ABILITY_META[agentName];
+          if (!meta) return { c:1, q:1, e:1, x: 1/7 };
+          return {
+            c: meta.charges.c || 1,
+            q: meta.charges.q || 1,
+            e: meta.charges.e || 1,
+            x: 1 / (meta.ult_orbs || 7)
+          };
+        }
+
+        // Utility Usage Score (UUS): measures how efficiently a player used their util
+        // relative to what was theoretically achievable.
+        //   Non-ult:  sum( cpr[s] / maxCPR[s] ) / 3  — avg fraction of capacity used
+        //   Ult:      ult_cpr / maxUltCPR             — separate fraction
+        //   Final:    (non_ult_avg + ult_frac) / 2 * 100  → 0-100% score
+        // For agent stats (CPR-based): cpr = u[s], rounds implicit
+        // For match history (raw casts + rounds): cpr = casts[s] / rounds
+        function computeUUS(agentName, cprC, cprQ, cprE, cprX) {
+          var m = getMaxCPR(agentName);
+          var utilFrac = ((Math.min(cprC, m.c)/m.c) + (Math.min(cprQ, m.q)/m.q) + (Math.min(cprE, m.e)/m.e)) / 3;
+          var ultFrac  = Math.min(cprX, m.x) / m.x;
+          return ((utilFrac + ultFrac) / 2) * 100;
+        }
+
+        // Toggle button for charge-scale mode — injected into sidebar Config panel
+        function initUtilScaleToggle() {
+          var cbGroup = document.querySelector('.checkbox-col');
+          if (!cbGroup) return;
+          var wrap = document.createElement('div');
+          wrap.className = 'checkbox-group';
+          wrap.style.cssText = 'margin-top:6px;flex-direction:column;align-items:flex-start;gap:4px;';
+          wrap.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;">Util Bar Scale</div>'
+            + '<div id="util-scale-toggle" style="display:flex;gap:3px;">'
+            + '<button id="usm-raw"    class="util-scale-btn active" onclick="agentsPage.setUtilScale(\'raw\')"    data-tip="Bars max at CPR 1.0&#10;(one cast per round).">RAW CPR</button>'
+            + '<button id="usm-charge" class="util-scale-btn"        onclick="agentsPage.setUtilScale(\'charge\')" data-tip="Bars scale to max possible&#10;CPR given the ability\'s&#10;charges. Shows % of capacity used.&#10;UUS score shown beside bars.">CHARGE %</button>'
+            + '</div>';
+          cbGroup.appendChild(wrap);
+        }
 
         function wrStyle(v) {
           if (v >= 55) return 'color:#00d4aa;text-shadow:0 0 8px #00d4aa44;';
@@ -1817,20 +2318,38 @@
           var u = a && a.utility;
           var loadout = a && a.loadout;
           if (!u) return '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);">—</span>';
-          var ai = loadout && loadout.ability_icons || {}, html = '<div class="util-mini">';
+          var ai = loadout && loadout.ability_icons || {};
+          var maxCPR = (utilScaleMode === 'charge') ? getMaxCPR(a.name) : null;
+          var html = '<div class="util-mini">';
           ['c', 'q', 'e', 'x'].forEach(function (s) {
-            var pct = Math.min(100, (u[s] / CPR_MAX) * 100), isUlt = s === 'x', dimmed = sortKey === 'ult_cpr' && !isUlt, col = SLOT_COL[s];
+            var isUlt = s === 'x', dimmed = sortKey === 'ult_cpr' && !isUlt, col = SLOT_COL[s];
+            var pct;
+            var valStr;
+            if (utilScaleMode === 'charge' && maxCPR) {
+              var cap = maxCPR[s];
+              pct = Math.min(100, (u[s] / cap) * 100);
+              valStr = Math.round(pct) + '%';
+            } else {
+              pct = Math.min(100, (u[s] / CPR_MAX) * 100);
+              valStr = u[s].toFixed(2);
+            }
             var iconUrl = ai[s] || '';
             var hue = isUlt ? '320' : '160';
             var lblInner = iconUrl
               ? '<img src="' + iconUrl + '" alt="' + s.toUpperCase() + '" style="width:14px;height:14px;object-fit:contain;filter:brightness(0) invert(1) sepia(1) saturate(6) hue-rotate(' + hue + 'deg);opacity:' + (dimmed ? '0.3' : '0.82') + ';display:block;" onerror="this.style.display=&#39;none&#39;">'
               : '<span style="font-family:var(--mono);font-size:9px;color:' + col + ';">' + s.toUpperCase() + '</span>';
-            html += '<div class="util-mini-row"><span class="um-lbl">' + lblInner + '</span><div class="um-track"><div class="um-fill" style="width:' + pct + '%;background:' + col + ';opacity:' + (dimmed ? '0.3' : isUlt ? '0.55' : '0.75') + ';"></div></div><span class="um-val">' + u[s].toFixed(3) + '</span></div>';
+            html += '<div class="util-mini-row"><span class="um-lbl">' + lblInner + '</span><div class="um-track"><div class="um-fill" style="width:' + pct + '%;background:' + col + ';opacity:' + (dimmed ? '0.3' : isUlt ? '0.55' : '0.75') + ';"></div></div><span class="um-val" style="font-size:' + (utilScaleMode==='charge'?'9':'12') + 'px;">' + valStr + '</span></div>';
           });
+          // UUS badge when in charge mode
+          if (utilScaleMode === 'charge') {
+            var uus = computeUUS(a.name, u.c, u.q, u.e, u.x);
+            var uusCol = uus >= 70 ? '#00d4aa' : uus >= 45 ? '#ffe84d' : '#ff4655';
+            html += '<div style="margin-top:3px;font-family:var(--mono);font-size:9px;color:' + uusCol + ';letter-spacing:.06em;text-align:right;">UUS ' + uus.toFixed(0) + '%</div>';
+          }
           return html + '</div>';
         }
 
-        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#6a8aa8', bg: '#0d1520', abbr: 'N' } };
+        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#a9c3dc', bg: '#0d1520', abbr: 'N' } };
         var SHIELD_KEYS = ['Heavy Armor', 'Light Armor', 'Regen Shield', '(none)'];
         function shieldEntries(sh) { sh = sh || {}; var keys = SHIELD_KEYS.slice(); Object.keys(sh).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); keys.sort(function (a, b) { if (a === '(none)') return 1; if (b === '(none)') return -1; return (sh[b] ? sh[b].buy_rate_pct : 0) - (sh[a] ? sh[a].buy_rate_pct : 0); }); return keys.map(function (n) { var s = SHIELD_STYLE[n] || { col: 'var(--text-dim)', bg: '#1a2d3d', abbr: n.charAt(0).toUpperCase() }; return { name: n, pct: sh[n] ? sh[n].buy_rate_pct : 0, col: s.col, bg: s.bg, abbr: s.abbr }; }); }
         function shieldBarsHTML(sh) { var e = shieldEntries(sh), mx = Math.max.apply(null, e.map(function (x) { return x.pct; }).concat([0.01])); return e.map(function (x) { var w = mx > 0 ? (x.pct / mx * 100) : 0; return '<div class="bar-row"><div class="bar-name">' + x.name + '</div><div class="bar-track"><div class="bar-fill" style="width:' + w + '%;background:' + x.col + '55;border-right:2px solid ' + x.col + ';"></div></div><div class="bar-pct" style="color:' + x.col + '">' + x.pct.toFixed(1) + '%</div></div>'; }).join(''); }
@@ -1920,17 +2439,57 @@
               filterCtx = '<div style="font-family:var(--mono);font-size:9px;color:var(--cyan);opacity:.7;margin-bottom:8px;letter-spacing:.08em;">FILTERED: ' + ctxParts.join(' / ') + '</div>';
           }
 
+          // Charge-scale mode vars
+          var isChargeMode = utilScaleMode === 'charge';
+          var maxCPR = isChargeMode ? getMaxCPR(a.name) : null;
+          var agentMeta = isChargeMode ? (AGENT_ABILITY_META[a.name] || null) : null;
+
+          // UUS badge (charge mode only)
+          if (isChargeMode) {
+            var uus = computeUUS(a.name, u.c, u.q, u.e, u.x);
+            var uusCol = uus >= 70 ? '#00d4aa' : uus >= 45 ? '#ffe84d' : '#ff4655';
+            utilH += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+              + '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;">Util Usage Score</span>'
+              + '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + uusCol + ';letter-spacing:.04em;" data-tip="Utility Usage Score: how much of this&#10;agent\'s theoretical maximum util capacity&#10;was used per round, on average.&#10;&#10;Non-ult avg fraction of charge capacity used,&#10;plus ult fraction at 1-orb/round pace — averaged.&#10;&#10;100% = every ability used every time possible.">' + uus.toFixed(1) + '%</span>'
+              + '</div>'
+              + '<div style="height:2px;background:var(--border);margin-bottom:10px;position:relative;">'
+              + '<div style="position:absolute;left:0;top:0;height:100%;width:' + Math.min(100,uus) + '%;background:' + uusCol + ';transition:width .3s;"></div>'
+              + '</div>';
+          }
+
           ['c', 'q', 'e', 'x'].forEach(function (s) {
-            var p = Math.min(100, (u[s] / Math.max(umax, 2.0)) * 100);
             var col = SLOT_COL[s];
             var iconUrl = ai[s] || '';
             var safeIcon = iconUrl.replace(/"/g, '&quot;');
             var safeName = (an[s] || s.toUpperCase()).replace(/"/g, '&quot;');
             var iconHtml = iconUrl
-              ? '<img src="' + iconUrl + '" style="width:13px;height:13px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75;margin-right:2px;vertical-align:middle;" onerror="this.style.display=&#39;none&#39;">'
+              ? '<img src="' + iconUrl + '" style="width:15px;height:15px;object-fit:contain;filter:brightness(0) invert(1);opacity:.75;margin-right:2px;vertical-align:middle;" onerror="this.style.display=&#39;none&#39;">'
               : '';
             var safeDesc = (ad[s] || '').replace(/"/g, '&quot;');
             var approxCasts = Math.round(u[s] * avgRounds);
+
+            var pct, valDisplay, chargeLabel = '';
+            if (isChargeMode && maxCPR) {
+              var cap = maxCPR[s];
+              var capPct = Math.min(100, (u[s] / cap) * 100);
+              pct = capPct;
+              // Charge info label
+              var chargesAmt = agentMeta ? (agentMeta.charges[s] || 1) : 1;
+              if (s === 'x') {
+                var orbCost = agentMeta ? agentMeta.ult_orbs : 7;
+                chargeLabel = '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-left:4px;">(' + orbCost + ' orbs)</span>';
+              } else if (chargesAmt > 1) {
+                chargeLabel = '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-left:4px;">(' + chargesAmt + ' chg)</span>';
+              }
+              valDisplay = '<span style="font-family:var(--mono);font-size:11px;color:' + col + ';font-weight:600;">' + capPct.toFixed(0) + '%</span>'
+                + '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:4px;">' + u[s].toFixed(3) + '/r</span>'
+                + '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-left:4px;opacity:.6;">≈' + approxCasts + '</span>';
+            } else {
+              pct = Math.min(100, (u[s] / Math.max(umax, 1.0)) * 100);
+              valDisplay = '<span style="color:' + col + '">' + u[s].toFixed(3) + '</span>'
+                + '<span style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-left:5px;font-weight:400;">≈' + approxCasts + '</span>';
+            }
+
             utilH += '<div class="cpr-row"'
               + ' data-slot="' + s + '"'
               + ' data-panel="' + detailPanelId + '"'
@@ -1941,15 +2500,19 @@
               + ' data-col="' + col + '"'
               + ' data-desc="' + safeDesc + '"'
               + ' onclick="agentsPage.showUtilDetail(this)">'
-              + '<div class="cpr-label"><span class="cpr-slot" style="color:' + col + '">' + iconHtml + s.toUpperCase() + '</span>' + (an[s] || s.toUpperCase()) + '</div>'
-              + '<div class="cpr-track"><div class="cpr-fill" style="width:' + p + '%;background:' + col + ';opacity:.8;"></div></div>'
-              + '<div class="cpr-val" style="color:' + col + '">' + u[s].toFixed(3) + '<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:5px;font-weight:400;">≈' + approxCasts + '</span></div>'
+              + '<div class="cpr-label"><span class="cpr-slot" style="color:' + col + '">' + iconHtml + s.toUpperCase() + '</span>' + (an[s] || s.toUpperCase()) + chargeLabel + '</div>'
+              + '<div class="cpr-track"><div class="cpr-fill" style="width:' + pct + '%;background:' + col + ';opacity:.8;"></div></div>'
+              + '<div class="cpr-val" style="color:' + col + '">' + valDisplay + '</div>'
               + '</div>';
           });
           utilH = filterCtx + utilH;
           utilH += '<div id="' + detailPanelId + '" class="util-detail-panel"></div>';
           var noteScope = utilIsFiltered ? 'current filter selection' : 'all matches';
-          utilH += '<div class="acc-note">Casts-per-round averaged across ' + noteScope + '.<br>CPR &gt; 1.0 = multi-charge ability used more than once per round.<br><span style="color:var(--text-dim);opacity:.7;">≈N = rounded casts per match (CPR × ' + Math.round(avgRounds) + ' avg rounds).</span><br><span style="color:var(--cyan);opacity:.7;">Click a row above for details.</span></div>';
+          if (isChargeMode) {
+            utilH += '<div class="acc-note">% of max possible usage per round (charge-scaled).<br>Ult bar = fraction of 1-orb/round cadence used.<br><span style="color:var(--text-dim);opacity:.7;">≈N = rounded casts per match (CPR × ' + Math.round(avgRounds) + ' avg rounds).</span><br><span style="color:var(--cyan);opacity:.7;">Click a row above for details.</span></div>';
+          } else {
+            utilH += '<div class="acc-note">Casts-per-round averaged across ' + noteScope + '.<br>CPR &gt; 1.0 = multi-charge ability used more than once per round.<br><span style="color:var(--text-dim);opacity:.7;">≈N = rounded casts per match (CPR × ' + Math.round(avgRounds) + ' avg rounds).</span><br><span style="color:var(--cyan);opacity:.7;">Click a row above for details.</span></div>';
+          }
 
           var phases = ['Pistol', 'Eco', 'Force', 'Full Buy', '2nd Round'];
           var PTIPS = { 'Pistol': 'Round 1 &amp; 13 only.\nAll players start with 800 cr\n— no rifle purchases possible.', 'Eco': 'Teams spent &lt;2000 cr.\nSaving economy for next round;\nexpect pistols &amp; light buys.', 'Force': 'Teams spent ~2000–3899 cr\ndespite low economy.\nForced buys to stay competitive.', 'Full Buy': 'Teams spent ≥3900 cr.\nFull rifles + armor; reflects\ntrue meta weapon choices.', '2nd Round': 'Round after a pistol round win.\nBonus credits apply; shows\nhow teams transition off pistol.' };
@@ -2040,7 +2603,11 @@
           // Compute sort keys that depend on the resolved utility (now at a.utility)
           list.forEach(function (a) {
             var u = a.utility;
-            a.util_score = u ? u.c + u.q + u.e + u.x : null;
+            if (utilScaleMode === 'charge' && u) {
+              a.util_score = computeUUS(a.name, u.c, u.q, u.e, u.x);
+            } else {
+              a.util_score = u ? u.c + u.q + u.e + u.x : null;
+            }
             a.ult_cpr = u ? u.x : null;
           });
 
@@ -2186,8 +2753,38 @@
           panel.classList.add('visible');
         }
 
+        function setUtilScale(mode) {
+          utilScaleMode = mode;
+          document.querySelectorAll('.util-scale-btn').forEach(function(b) { b.classList.remove('active'); });
+          var activeBtn = document.getElementById('usm-' + mode);
+          if (activeBtn) activeBtn.classList.add('active');
+          // Update column header label
+          var lbl = document.getElementById('col-util-label');
+          if (lbl) {
+            var btns = lbl.querySelector('.util-sort-btns');
+            lbl.childNodes[0].textContent = mode === 'charge' ? 'Util UUS ' : 'Util CPR ';
+            // Update INV tooltip
+            var invBtn = lbl.querySelector('[data-sort="util_score"]');
+            if (invBtn) invBtn.setAttribute('data-tip', mode === 'charge' ? 'Utility Usage Score (UUS):\nhow much capacity was used vs. max possible.' : 'Util Investment: C+Q+E+X CPR sum.');
+          }
+          // Re-render all expanded accordions
+          expandedSet.forEach(function(name) {
+            var id = 'acc-row-' + name.replace(/[^a-z0-9]/gi, '');
+            var row = document.getElementById(id);
+            if (row) {
+              var agent = agentsData.find(function(a) { return a.name === name; });
+              if (agent) { row.querySelector('td').innerHTML = buildAccordion(agent); }
+            }
+          });
+          renderTable();
+        }
+
+        initUtilScaleToggle();
+        initRoleFilters();
+        renderTable();
+
         window.resolveAgentStats = resolveAgentStats;
-        return { renderTable: renderTable, switchPhase: switchPhase, showUtilDetail: showUtilDetail };
+        return { renderTable: renderTable, switchPhase: switchPhase, showUtilDetail: showUtilDetail, setUtilScale: setUtilScale };
       })();
     </script>
   </div>
@@ -2202,7 +2799,7 @@
       .meta-layout {
         display: grid;
         grid-template-columns: var(--sidebar-width) 1fr;
-        min-height: calc(100vh - 52px);
+        min-height: calc(100vh - var(--header-h));
       }
 
       .meta-sidebar {
@@ -2213,9 +2810,9 @@
         gap: 12px;
         background: var(--panel);
         position: sticky;
-        height: calc(100vh - 52px);
-        max-height: calc(100vh - 52px);
-        top: 52px;
+        height: calc(100vh - var(--header-h));
+        max-height: calc(100vh - var(--header-h));
+        top: var(--header-h);
         overflow-y: auto;
       }
 
@@ -2338,7 +2935,7 @@
 
       .bar-name {
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: 13px;
         color: var(--text);
         min-width: 130px;
         overflow: hidden;
@@ -2366,7 +2963,7 @@
 
       .bar-pct {
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 14px;
         color: var(--text-dim);
         min-width: 38px;
         text-align: right;
@@ -2670,28 +3267,25 @@
         </div>
         <div class="panel">
           <div class="panel-hdr">Map</div>
-          <div class="panel-body" style="padding:10px 12px;">
-            <select id="meta-sel-map"
-              style="width:100%;font-family:var(--mono);font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text-bright);padding:7px 10px;outline:none;appearance:none;cursor:pointer;border-radius:1px;">
+          <div class="panel-body panel-body--sm">
+            <select id="meta-sel-map" class="full-width">
               <option value="all">All Maps</option>
             </select>
           </div>
         </div>
         <div class="panel">
           <div class="panel-hdr">Rank Filter</div>
-          <div class="panel-body" style="padding:10px 12px;">
+          <div class="panel-body panel-body--sm">
             <div class="rank-grid" id="meta-rank-grid"></div>
-            <div id="meta-rank-note"
-              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:6px;line-height:1.6;opacity:.6;display:none;">
+            <div id="meta-rank-note" class="rank-note" style="display:none;">
               No rank data in dataset.</div>
-            <div
-              style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;line-height:1.6;opacity:.6;">
+            <div class="rank-note rank-note--always">
               Applies to Weapon Buy Rates section only.</div>
           </div>
         </div>
         <div class="panel">
           <div class="panel-hdr">Display</div>
-          <div class="panel-body" style="padding:10px 12px;">
+          <div class="panel-body panel-body--sm">
             <div class="checkbox-group"><input type="checkbox" id="econGroupByRole" checked><label for="econGroupByRole"
                 data-tip="Group agents into labelled&#10;role sections. Stays active&#10;even when sorting by weapon.">Group
                 by role</label></div>
@@ -2706,19 +3300,19 @@
         </div>
         <div class="meta-two-col">
           <div class="meta-panel">
-            <div class="section-title" style="margin-bottom:12px;">Weapon Meta</div>
+            <div class="section-title section-title--tight">Weapon Meta</div>
             <div id="meta-weapons"></div>
           </div>
           <div class="meta-panel">
-            <div class="section-title" style="margin-bottom:12px;">Shield Distribution</div>
+            <div class="section-title section-title--tight">Shield Distribution</div>
             <div id="meta-shields"></div>
           </div>
         </div>
         <div>
           <div class="section-title">Weapon Buy Rates by Agent</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:14px;">
+          <div class="meta-description">
             % of rounds each agent bought a given weapon in the active phase. Filter by map and rank to answer questions
-            like <em style="color:var(--cyan);">"who is more likely to buy a Vandal round 2?"</em>
+            like <em class="meta-description__highlight">"who is more likely to buy a Vandal round 2?"</em>
           </div>
 
           <!-- Weapon column config panel -->
@@ -2726,7 +3320,7 @@
             <div class="wep-config-hdr" id="wep-config-hdr">
               <div class="wep-config-hdr-left">Weapon Columns &nbsp;<span class="wep-config-summary"
                   id="wep-config-summary"><span id="wep-config-count">—</span> selected</span></div>
-              <div style="display:flex;align-items:center;gap:10px;">
+              <div class="wep-config-hdr-right">
                 <div class="wep-config-actions">
                   <button class="wep-config-action-btn" id="wep-sel-all-primary">Primary: All</button>
                   <button class="wep-config-action-btn" id="wep-sel-rifles">Rifles Only</button>
@@ -2765,7 +3359,7 @@
         var econWeaponFilter = null; // null = show top-10 auto; Set = explicit whitelist
         var SLOT_COL = { c: '#00d4ff', q: '#ffe84d', e: '#39ff14', x: '#ff4655' };
 
-        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#6a8aa8', bg: '#0d1520', abbr: 'N' } };
+        var SHIELD_STYLE = { 'Heavy Armor': { col: '#00d4ff', bg: '#003d4d', abbr: 'H' }, 'Light Armor': { col: '#ffe84d', bg: '#1f1800', abbr: 'L' }, 'Regen Shield': { col: '#a78bfa', bg: '#1a1030', abbr: 'R' }, '(none)': { col: '#a9c3dc', bg: '#0d1520', abbr: 'N' } };
         var SHIELD_KEYS = ['Heavy Armor', 'Light Armor', 'Regen Shield', '(none)'];
         function shieldEntries(sh) { sh = sh || {}; var keys = SHIELD_KEYS.slice(); Object.keys(sh).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); }); keys.sort(function (a, b) { if (a === '(none)') return 1; if (b === '(none)') return -1; return (sh[b] ? sh[b].buy_rate_pct : 0) - (sh[a] ? sh[a].buy_rate_pct : 0); }); return keys.map(function (n) { var s = SHIELD_STYLE[n] || { col: 'var(--text-dim)', bg: '#1a2d3d', abbr: n.charAt(0).toUpperCase() }; return { name: n, pct: sh[n] ? sh[n].buy_rate_pct : 0, col: s.col, bg: s.bg, abbr: s.abbr }; }); }
 
@@ -2970,7 +3564,7 @@
           html += '</tr></thead><tbody>';
           var lr = null;
           rows.forEach(function (r) {
-            if (econGroupByRole && r.role !== lr) { lr = r.role; var rc = RC[r.role] || '#6a8aa8'; html += '<tr><td colspan="' + (topW.length + 2) + '" style="background:linear-gradient(90deg,' + rc + '28 0%,' + rc + '0a 100%);padding:5px 10px 5px 14px;font-family:var(--mono);font-size:9px;color:' + rc + ';letter-spacing:.18em;text-transform:uppercase;border-top:1px solid ' + rc + '55;border-bottom:1px solid ' + rc + '22;box-shadow:inset 3px 0 0 ' + rc + ';">' + r.role + '</td></tr>'; }
+            if (econGroupByRole && r.role !== lr) { lr = r.role; var rc = RC[r.role] || '#a9c3dc'; html += '<tr><td colspan="' + (topW.length + 2) + '" style="background:linear-gradient(90deg,' + rc + '28 0%,' + rc + '0a 100%);padding:5px 10px 5px 14px;font-family:var(--mono);font-size:9px;color:' + rc + ';letter-spacing:.18em;text-transform:uppercase;border-top:1px solid ' + rc + '55;border-bottom:1px solid ' + rc + '22;box-shadow:inset 3px 0 0 ' + rc + ';">' + r.role + '</td></tr>'; }
             html += '<tr><td><div class="hm-agent">' + (r.icon ? '<img class="hm-icon" src="' + r.icon + '" onerror="this.style.display=\'none\'">' : '') + '<span style="font-family:var(--mono);font-size:11px;">' + r.name + '</span></div></td>';
             // Win rate cell
             if (r.wr != null) { var wrV = r.wr, isHigh = wrV >= 52, isMid = wrV >= 49, wrCol = isHigh ? '#00d4aa' : isMid ? 'var(--text-bright)' : '#ff4655', wrBarPct = Math.max(0, Math.min(100, (wrV - 40) * 5)), wrBarCol = isHigh ? '#00d4aa33' : isMid ? '#ffffff22' : '#ff465533'; html += '<td class="hm-wr-col"><div class="hm-wr-val" style="color:' + wrCol + ';">' + wrV.toFixed(1) + '%</div><div class="hm-wr-bar"><div class="hm-wr-bar-fill" style="width:' + wrBarPct + '%;background:' + wrCol + ';opacity:.7;"></div></div></td>'; }
@@ -3135,38 +3729,29 @@
   <!-- ═══════════════════════════════════════════════════════════════
      PAGE 3: UTIL CHARGE CALCULATOR (loaded as iframe)
 ═══════════════════════════════════════════════════════════════ -->
-  <div id="page-util" class="page" style="height:calc(100vh - 65px);">
-    <iframe id="util-iframe" src="util.html" style="width:100%;height:100%;border:none;display:block;"
+  <div id="page-util" class="page">
+    <iframe id="util-iframe" src="util.html" class="page-iframe"
       scrolling="yes"></iframe>
   </div>
 
   <!-- Stats Report Modal -->
-  <div id="util-stats-modal"
-    style="display:none;position:fixed;inset:0;z-index:900;background:#000000cc;backdrop-filter:blur(3px);"
+  <div id="util-stats-modal" class="stats-modal" style="display:none;"
     onclick="if(event.target===this)this.style.display='none'">
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-              width:min(860px,92vw);max-height:80vh;
-              background:var(--bg2);border:1px solid var(--border-bright);
-              display:flex;flex-direction:column;">
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border);
-                display:flex;justify-content:space-between;align-items:center;
-                background:var(--bg3);">
-        <span style="font-family:var(--display);font-size:11px;letter-spacing:.15em;color:var(--cyan)">// DATA
-          REPORT</span>
+    <div class="stats-modal__dialog">
+      <div class="stats-modal__header">
+        <span class="stats-modal__title">// DATA REPORT</span>
         <button onclick="document.getElementById('util-stats-modal').style.display='none'"
-          style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1;">×</button>
+          class="stats-modal__close">×</button>
       </div>
-      <pre id="util-stats-report-text" style="padding:20px 24px;margin:0;overflow:auto;
-         font-family:var(--mono);font-size:13px;line-height:1.8;color:var(--text);
-         white-space:pre;flex:1;"></pre>
+      <pre id="util-stats-report-text" class="stats-modal__body"></pre>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════
      PAGE 5: MATCH HISTORY (loaded as iframe)
 ═══════════════════════════════════════════════════════════════ -->
-  <div id="page-matchhistory" class="page" style="height:calc(100vh - 52px);">
-    <iframe id="matchhistory-iframe" src="match-history.html" style="width:100%;height:100%;border:none;display:block;"
+  <div id="page-matchhistory" class="page">
+    <iframe id="matchhistory-iframe" src="match-history.html" class="page-iframe"
       scrolling="yes"></iframe>
   </div>
 

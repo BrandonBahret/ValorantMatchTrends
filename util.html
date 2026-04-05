@@ -109,6 +109,13 @@
         SAMPLE SIZE: <span style="color:var(--cyan)" id="util-sample-size">—</span> rounds &nbsp;|&nbsp;
         RANKS: <span style="color:var(--yellow)" id="util-active-ranks-label">ALL</span>
       </div>
+      <div id="util-stale-data-warning" style="display:none;font-family:var(--mono);font-size:11px;color:var(--yellow);background:#2a200a;border:1px solid #5a4010;padding:8px 12px;line-height:1.7;">
+        ⚠ <strong>Act + map filter not applied:</strong> <code>round_stats.js</code> was generated without the <code>by_map_by_act</code> cross-slice.
+        Showing all-acts data for this map. Re-run the data generator to fix this.
+      </div>
+      <div id="util-no-combo-warning" style="display:none;font-family:var(--mono);font-size:11px;color:var(--text-dim);background:var(--bg3);border:1px solid var(--border);padding:8px 12px;line-height:1.7;">
+        ℹ No rounds on record for this act + map combination. Showing all-acts data for this map as a fallback.
+      </div>
 
       <div class="util-section-title">Round Duration Statistics</div>
       <div class="util-stat-row">
@@ -296,34 +303,116 @@ function getActiveUtilStats() {
   if (!LOADED_DATA) return null;
   const selectedAct = document.getElementById('util-sel-act').value;
   const selectedMap = document.getElementById('util-sel-map').value;
+  const warning = document.getElementById('util-stale-data-warning');
+
+  const noComboWarning = document.getElementById('util-no-combo-warning');
+  const hideWarnings = () => {
+    if (warning) warning.style.display = 'none';
+    if (noComboWarning) noComboWarning.style.display = 'none';
+  };
+
+  // Both map + act selected.
+  if (selectedMap !== 'all' && selectedAct !== 'all') {
+    const hasCrossSlice = !!LOADED_DATA.by_map_by_act;
+    const cross = LOADED_DATA.by_map_by_act?.[selectedMap]?.[selectedAct];
+    if (cross) {
+      hideWarnings();
+      return normaliseRankStats(cross);
+    }
+    // Cross-slice missing entirely = stale generator (by_map_by_act key absent).
+    // Cross-slice present but no entry for this combo = genuinely zero rounds.
+    if (!hasCrossSlice) {
+      if (warning) warning.style.display = '';
+      if (noComboWarning) noComboWarning.style.display = 'none';
+    } else {
+      if (warning) warning.style.display = 'none';
+      if (noComboWarning) noComboWarning.style.display = '';
+    }
+    // Fall through to map-only as the best available data.
+  } else {
+    hideWarnings();
+  }
+
+  if (selectedMap !== 'all' && LOADED_DATA.by_map?.[selectedMap]) {
+    return normaliseRankStats(LOADED_DATA.by_map[selectedMap]);
+  }
+  if (selectedAct !== 'all' && LOADED_DATA.by_act?.[selectedAct]) {
+    return normaliseRankStats(LOADED_DATA.by_act[selectedAct]);
+  }
+
+  // No act/map filter — merge the active rank slices.
   const candidates = [];
   for (const rank of utilActiveRanks) {
     const rs = LOADED_DATA.by_rank?.[rank];
     if (rs) candidates.push(normaliseRankStats(rs));
   }
-  let base = null;
-  if (candidates.length) base = mergeUtilStats(candidates);
-  else if (selectedAct !== 'all' && LOADED_DATA.by_act?.[selectedAct]) base = normaliseRankStats(LOADED_DATA.by_act[selectedAct]);
-  else if (selectedMap !== 'all' && LOADED_DATA.by_map?.[selectedMap]) base = normaliseRankStats(LOADED_DATA.by_map[selectedMap]);
-  else base = normaliseRankStats(LOADED_DATA.overall);
-  if (!base) return null;
-  if (selectedAct !== 'all' && LOADED_DATA.by_act?.[selectedAct] && candidates.length) {
-    const actStats = normaliseRankStats(LOADED_DATA.by_act[selectedAct]);
-    const overall  = normaliseRankStats(LOADED_DATA.overall);
-    if (actStats && overall && overall.median > 0) {
-      const sc = actStats.median / overall.median;
-      base = { ...base, median: +(base.median*sc).toFixed(1), p25: +(base.p25*sc).toFixed(1), p75: +(base.p75*sc).toFixed(1) };
+  if (candidates.length) return mergeUtilStats(candidates);
+  return normaliseRankStats(LOADED_DATA.overall);
+}
+
+// ── Statistical helpers ────────────────────────────────────────────────────────
+// Linear interpolation within each 5s bin. More accurate than snapping to
+// bin left edges, which can be off by up to a full 5s bin width.
+function percentileFromHist(hist, pct) {
+  const bins = Object.keys(hist).map(Number).sort((a,b) => a-b);
+  const total = bins.reduce((s,b) => s + (hist[b] || 0), 0);
+  if (!total) return 0;
+  const target = (pct / 100) * total;
+  let cum = 0;
+  for (const b of bins) {
+    const count = hist[b] || 0;
+    if (count > 0 && cum + count >= target) {
+      return b + ((target - cum) / count) * 5; // interpolate within bin
     }
+    cum += count;
   }
-  if (selectedMap !== 'all' && LOADED_DATA.by_map?.[selectedMap] && candidates.length) {
-    const mapStats = normaliseRankStats(LOADED_DATA.by_map[selectedMap]);
-    const overall  = normaliseRankStats(LOADED_DATA.overall);
-    if (mapStats && overall && overall.median > 0) {
-      const sc = mapStats.median / overall.median;
-      base = { ...base, median: +(base.median*sc).toFixed(1), p25: +(base.p25*sc).toFixed(1), p75: +(base.p75*sc).toFixed(1) };
+  return bins[bins.length - 1] + 5;
+}
+
+// % of rounds lasting >= threshold, with proper within-bin interpolation
+// for the bin that straddles the threshold (fixes systematic undercount).
+function survivalFromHist(hist, threshold) {
+  const bins = Object.keys(hist).map(Number).sort((a,b) => a-b);
+  const total = bins.reduce((s,b) => s + (hist[b] || 0), 0);
+  if (!total) return 0;
+  let above = 0;
+  for (const b of bins) {
+    const count = hist[b] || 0;
+    const binEnd = b + 5;
+    if (threshold <= b)        above += count;                             // entire bin above
+    else if (threshold < binEnd) above += count * (binEnd - threshold) / 5; // straddles: pro-rate
+    // else entirely below — skip
+  }
+  return (above / total) * 100;
+}
+
+// Among rounds that lasted >= threshold, what is the median remaining time?
+// Used for the "of those rounds, median Xs remains" sub-stat.
+function medianConditionalRemainder(hist, threshold) {
+  const bins = Object.keys(hist).map(Number).sort((a,b) => a-b);
+  // Compute total weight of rounds above threshold (with partial bin credit)
+  let condTotal = 0;
+  for (const b of bins) {
+    const count = hist[b] || 0, binEnd = b + 5;
+    if (threshold <= b)          condTotal += count;
+    else if (threshold < binEnd) condTotal += count * (binEnd - threshold) / 5;
+  }
+  if (!condTotal) return 0;
+  const target = condTotal / 2;
+  let cum = 0;
+  for (const b of bins) {
+    const count = hist[b] || 0, binEnd = b + 5;
+    let contrib, binStart;
+    if (threshold <= b)          { contrib = count;                              binStart = b;         }
+    else if (threshold < binEnd) { contrib = count * (binEnd - threshold) / 5;  binStart = threshold; }
+    else continue;
+    if (cum + contrib >= target) {
+      const frac = (target - cum) / contrib;
+      return Math.max(0, binStart + frac * (binEnd - binStart) - threshold);
     }
+    cum += contrib;
   }
-  return base;
+  return 0;
 }
 
 function mergeUtilStats(arr) {
@@ -332,13 +421,35 @@ function mergeUtilStats(arr) {
   if (!valid.length) return null;
   const totalN = valid.reduce((s,v) => s + (v.sampleRounds || 1), 0);
   const wavg = k => valid.reduce((s,v) => s + (v[k] || 0) * (v.sampleRounds || 1), 0) / totalN;
+
+  // Sum histograms bin-by-bin so the merged result has a real distribution.
+  // Without this, the histogram is discarded and all survival/percentile
+  // calculations fall back to the inaccurate piecewise approximation.
+  const hists = valid.map(v => v.durationHist).filter(Boolean);
+  let mergedHist = null;
+  if (hists.length) {
+    mergedHist = {};
+    for (const h of hists)
+      for (const [bin, count] of Object.entries(h))
+        mergedHist[bin] = (mergedHist[bin] || 0) + count;
+  }
+
+  // Derive percentiles from the merged histogram when available — weighted
+  // averaging of medians/percentiles is mathematically wrong (the median of
+  // a mixture is not the weighted mean of each group's median).
+  const median = mergedHist ? +percentileFromHist(mergedHist, 50).toFixed(1) : +wavg('median').toFixed(1);
+  const p25    = mergedHist ? +percentileFromHist(mergedHist, 25).toFixed(1) : +wavg('p25').toFixed(1);
+  const p75    = mergedHist ? +percentileFromHist(mergedHist, 75).toFixed(1) : +wavg('p75').toFixed(1);
+
   return {
-    median: +wavg('median').toFixed(1), p25: +wavg('p25').toFixed(1), p75: +wavg('p75').toFixed(1),
+    median, p25, p75,
     maxRound: Math.max(...valid.map(v => v.maxRound || 0)) || null,
+    // Plant/post-plant stats have no histogram — weighted average is the
+    // best available estimate from pre-aggregated slices.
     medianPlant: +wavg('medianPlant').toFixed(1), sdPlant: +wavg('sdPlant').toFixed(1),
     medianPostPlant: +wavg('medianPostPlant').toFixed(1), sdPostPlant: +wavg('sdPostPlant').toFixed(1),
     plantRate: +wavg('plantRate').toFixed(3), defuseRate: +wavg('defuseRate').toFixed(3),
-    elimRate: +wavg('elimRate').toFixed(3), sampleRounds: totalN, durationHist: null,
+    elimRate: +wavg('elimRate').toFixed(3), sampleRounds: totalN, durationHist: mergedHist,
   };
 }
 
@@ -370,51 +481,22 @@ function updateUtilStatCards(stats) {
   document.getElementById('util-stat-noplant').innerHTML = `${Math.round((1-stats.plantRate)*100)}<span>%</span>`;
   const offset = getUtilActivationOffset(stats);
   const rechargeThreshold = offset + utilCooldown;
-  let rechargeRoundPct;
-  if (stats.durationHist) {
-    const hist = stats.durationHist;
-    const total = Object.values(hist).reduce((a,b) => a+b, 0);
-    const above = Object.entries(hist).filter(([bin]) => +bin >= rechargeThreshold).reduce((a,[,c]) => a+c, 0);
-    rechargeRoundPct = total > 0 ? (above/total)*100 : 0;
-  } else {
-    const med=+stats.median, p25=+stats.p25, p75=+stats.p75, tailEnd=p75+(p75-med)*2, T=rechargeThreshold;
-    if      (T<=0)       rechargeRoundPct=100;
-    else if (T<=p25)     rechargeRoundPct=100-(T/p25)*25;
-    else if (T<=med)     rechargeRoundPct=75-((T-p25)/(med-p25))*25;
-    else if (T<=p75)     rechargeRoundPct=50-((T-med)/(p75-med))*25;
-    else if (T<=tailEnd) rechargeRoundPct=25-((T-p75)/(tailEnd-p75))*25;
-    else                 rechargeRoundPct=0;
-    rechargeRoundPct=Math.max(0,Math.min(100,rechargeRoundPct));
-  }
-  let medianTimeToInvest;
-  if (!stats.durationHist) {
-    const targetSurvival=rechargeRoundPct/2, med2=+stats.median, p25_2=+stats.p25, p75_2=+stats.p75, tailEnd2=p75_2+(p75_2-med2)*2;
-    let tStar;
-    if      (targetSurvival>=75) tStar=(100-targetSurvival)/25*p25_2;
-    else if (targetSurvival>=50) tStar=p25_2+((75-targetSurvival)/25)*(med2-p25_2);
-    else if (targetSurvival>=25) tStar=med2+((50-targetSurvival)/25)*(p75_2-med2);
-    else                         tStar=p75_2+((25-targetSurvival)/25)*(tailEnd2-p75_2);
-    medianTimeToInvest=Math.max(0,tStar-rechargeThreshold);
-  }
+  // survivalFromHist uses within-bin interpolation for both calculations,
+  // and works on real or merged histograms. The piecewise linear fallback
+  // is removed — mergeUtilStats now always produces a histogram.
+  const rechargeRoundPct = stats.durationHist
+    ? survivalFromHist(stats.durationHist, rechargeThreshold)
+    : 0;
+  const medianTimeToInvest = stats.durationHist
+    ? medianConditionalRemainder(stats.durationHist, rechargeThreshold)
+    : 0;
   document.getElementById('util-stat-recharge').innerHTML = `${Math.round(rechargeRoundPct)}<span>%</span>`;
   document.getElementById('util-stat-recharge-sub').textContent =
-    medianTimeToInvest!=null&&medianTimeToInvest>0 ? `of those rounds, median ${medianTimeToInvest.toFixed(0)}s remains` : `recharge fires at the very end of those rounds`;
+    medianTimeToInvest > 0 ? `of those rounds, median ${medianTimeToInvest.toFixed(0)}s remains` : `recharge fires at the very end of those rounds`;
   const invest15Threshold = rechargeThreshold + 15;
-  let invest15Pct;
-  if (stats.durationHist) {
-    const hist=stats.durationHist, total=Object.values(hist).reduce((a,b)=>a+b,0);
-    const above=Object.entries(hist).filter(([bin])=>+bin>=invest15Threshold).reduce((a,[,c])=>a+c,0);
-    invest15Pct=total>0?(above/total)*100:0;
-  } else {
-    const med=+stats.median,p25=+stats.p25,p75=+stats.p75,tailEnd=p75+(p75-med)*2,T=invest15Threshold;
-    if      (T<=0)       invest15Pct=100;
-    else if (T<=p25)     invest15Pct=100-(T/p25)*25;
-    else if (T<=med)     invest15Pct=75-((T-p25)/(med-p25))*25;
-    else if (T<=p75)     invest15Pct=50-((T-med)/(p75-med))*25;
-    else if (T<=tailEnd) invest15Pct=25-((T-p75)/(tailEnd-p75))*25;
-    else                 invest15Pct=0;
-    invest15Pct=Math.max(0,Math.min(100,invest15Pct));
-  }
+  const invest15Pct = stats.durationHist
+    ? survivalFromHist(stats.durationHist, invest15Threshold)
+    : 0;
   document.getElementById('util-stat-recharge15').innerHTML = `${Math.round(invest15Pct)}<span>%</span>`;
   document.getElementById('util-sample-size').textContent = stats.sampleRounds ? stats.sampleRounds.toLocaleString() : (utilActiveRanks.size*850+1200).toLocaleString()+'*';
   document.getElementById('util-active-ranks-label').textContent = utilActiveRanks.size===9?'ALL':[...utilActiveRanks].map(r=>r.toUpperCase().slice(0,3)).join(', ');
@@ -764,6 +846,7 @@ document.getElementById('util-hist-toggle-label').addEventListener('click', () =
   cb.checked = !cb.checked;
   cb.dispatchEvent(new Event('change'));
 });
+document.getElementById('util-sel-act').addEventListener('change', utilUpdate);
 document.getElementById('util-sel-map').addEventListener('change', utilUpdate);
 document.querySelectorAll('#util-rank-grid .rank-badge').forEach(el => {
   el.addEventListener('click', () => {

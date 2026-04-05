@@ -33,6 +33,20 @@
   --glow-green: 0 0 8px rgba(77,255,180,.5);
   --glow-cyan:  0 0 8px rgba(0,212,255,.5);
 }
+
+.mh-util-scale-btn {
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: all .1s;
+}
+.mh-util-scale-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.mh-util-scale-btn.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,232,77,.08); }
 body {
   background: var(--bg); color: var(--text);
   font-family: var(--mono); font-size: 12px;
@@ -358,7 +372,7 @@ body {
 .sb-team-label.red-team  { background: rgba(255,70,85,.06);  color: var(--red); border-left: 3px solid var(--red); }
 
 /* ── SORTABLE TABLE ──────────────────────────────────────── */
-.sb-table { width: 100%; border-collapse: collapse; }
+.sb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sb-table th {
   padding: 7px 12px; font-family: var(--mono); font-size: 10px; font-weight: 500;
   letter-spacing: .1em; color: var(--text-dim); text-transform: uppercase;
@@ -468,104 +482,232 @@ body {
   padding: 0 !important;
   background: var(--bg) !important;
   border-bottom: 2px solid var(--border) !important;
+  max-width: 0;
+  overflow: hidden;
 }
 
+/* ── EXPAND CONTENT SHELL ───────────────────────────────── */
 .sb-pex-content {
-  padding: 16px 20px 18px 28px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
+/* ── PANELS ─────────────────────────────────────────────── */
 .sb-pex-panel {
-  border: 1px solid var(--border);
-  background: var(--panel);
-  padding: 14px 16px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 2 1 0;
+  padding: 20px 24px 24px;
+  position: relative;
+  border-right: 1px solid var(--border);
+  border-top: 1px solid var(--border);
 }
-.sb-pex-title {
-  font-family: var(--mono); font-size: 9px; letter-spacing: .13em;
-  color: var(--cyan); text-transform: uppercase; margin-bottom: 12px;
-  display: flex; align-items: center; gap: 6px;
-}
-.sb-pex-title::before { content: '// '; color: var(--text-dim); }
+.sb-pex-panel:last-child { border-right: none; }
 
-/* stat grid */
+.sb-pex-panel.util-panel {
+  flex: 5 1 0;
+  background: linear-gradient(160deg, rgba(0,212,255,.018) 0%, transparent 55%);
+}
+
+/* ── PANEL HEADER ───────────────────────────────────────── */
+.sb-pex-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  opacity: .8;
+}
+.sb-pex-title::before { content: '//'; color: rgba(0,212,255,.3); font-size: 11px; }
+
+/* ── STAT GRID ──────────────────────────────────────────── */
 .sb-pex-stat-grid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--border);
 }
 .sb-pex-stat {
-  background: var(--bg2); border: 1px solid var(--border);
-  padding: 9px 8px; text-align: center;
+  padding: 13px 14px 11px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
+.sb-pex-stat:nth-child(2n)        { border-right: none; }
+.sb-pex-stat:nth-last-child(-n+2) { border-bottom: none; }
+.sb-pex-stat:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  border-right: none;
+}
+
 .sb-pex-stat-label {
-  font-family: var(--mono); font-size: 8px; color: var(--text-dim);
-  letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: .65;
 }
 .sb-pex-stat-val {
-  font-family: var(--display); font-size: 16px; font-weight: 700;
-  color: var(--text-bright); line-height: 1;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-bright);
+  line-height: 1;
+  letter-spacing: -.01em;
 }
+/* KDA string is longer, tighten slightly */
+.sb-pex-stat-val.kda-str { font-size: 15px; letter-spacing: .02em; }
 .sb-pex-stat-val.good { color: var(--win); }
 .sb-pex-stat-val.warn { color: var(--yellow); }
 .sb-pex-stat-val.bad  { color: var(--loss); }
 
-/* util bars */
+/* ── UTIL MODE TOGGLE ───────────────────────────────────── */
+.mh-util-scale-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: .08em;
+  transition: all .1s;
+}
+.mh-util-scale-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.mh-util-scale-btn.active {
+  border-color: var(--yellow);
+  color: var(--yellow);
+  background: rgba(255,232,77,.08);
+}
+
+/* ── UTIL BARS ──────────────────────────────────────────── */
 .sb-pex-util-row {
-  display: flex; align-items: center; gap: 8px;
-  cursor: pointer; border-radius: 2px;
-  transition: background .12s; padding: 3px 4px; margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background .12s;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  min-width: 0;
+  width: calc(100% + 20px);
 }
 .sb-pex-util-row:hover { background: rgba(255,255,255,.04); }
-.sb-pex-util-row.open  { background: rgba(255,255,255,.05); margin-bottom: 0; }
+.sb-pex-util-row.open  { background: rgba(255,255,255,.05); }
+
 .sb-pex-util-desc {
   display: none;
-  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
-  line-height: 1.65; letter-spacing: .02em;
-  padding: 5px 8px 8px 38px;
-  border-left: 1px solid var(--border);
-  margin: 0 4px 8px 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  letter-spacing: .02em;
+  padding: 6px 10px 12px 42px;
+  border-left: 1px solid rgba(0,212,255,.2);
+  margin: 0 0 4px 10px;
 }
 .sb-pex-util-row.open + .sb-pex-util-desc { display: block; }
+
 .sb-pex-util-icon {
-  width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; opacity: .85;
+  width: 16px; height: 16px;
+  object-fit: contain; flex-shrink: 0; opacity: .85;
 }
 .sb-pex-util-icon-fallback {
   font-family: var(--mono); font-size: 10px; font-weight: 700;
-  width: 18px; text-align: center; flex-shrink: 0;
-}
-.sb-pex-util-track {
-  flex: 1; height: 5px; background: var(--border); position: relative;
-}
-.sb-pex-util-fill {
-  height: 100%; position: absolute; top: 0; left: 0; transition: width .3s;
-}
-.sb-pex-util-val {
-  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
-  min-width: 28px; text-align: right;
-}
-.sb-pex-util-name {
-  font-family: var(--mono); font-size: 9px; color: var(--text-dim);
-  letter-spacing: .04em; text-transform: uppercase; min-width: 64px; flex-shrink: 0;
-  opacity: .65;
-}
-.sb-pex-util-cpr {
-  font-family: var(--mono); font-size: 12px; color: var(--text-dim);
-  min-width: 36px; text-align: right; opacity: .5; flex-shrink: 0;
+  width: 16px; text-align: center; flex-shrink: 0;
 }
 
-/* links */
-.sb-pex-links { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.sb-pex-link {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 12px; border: 1px solid var(--border);
-  background: var(--bg2); text-decoration: none;
-  color: var(--text); font-family: var(--mono); font-size: 11px;
-  letter-spacing: .04em; transition: border-color .15s, color .15s, background .15s;
+/* ability name — no fixed width, no truncation */
+.sb-pex-util-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 80px;
 }
-.sb-pex-link:hover { color: var(--cyan); border-color: var(--cyan); background: rgba(0,212,255,.06); }
-.sb-pex-link-icon { font-size: 13px; opacity: .7; flex-shrink: 0; }
-.sb-pex-link-label { flex: 1; }
-.sb-pex-link-sub { font-size: 9px; color: var(--text-dim); margin-top: 2px; letter-spacing: .06em; }
+
+.sb-pex-util-track {
+  flex: 1;
+  min-width: 60px;
+  height: 7px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.sb-pex-util-fill {
+  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+  transition: width .4s cubic-bezier(.4,0,.2,1);
+}
+
+.sb-pex-util-val {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 36px;
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+.sb-pex-util-cpr {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  min-width: 46px;
+  white-space: nowrap;
+  text-align: right;
+  opacity: .4;
+  flex-shrink: 0;
+}
+
+/* ── LINKS PANEL ────────────────────────────────────────── */
+.sb-pex-links { display: flex; flex-direction: column; gap: 8px; }
+.sb-pex-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.02);
+  text-decoration: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .04em;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.sb-pex-link:hover {
+  color: var(--cyan);
+  border-color: rgba(0,212,255,.4);
+  background: rgba(0,212,255,.05);
+}
+.sb-pex-link-icon { font-size: 14px; opacity: .45; flex-shrink: 0; }
+.sb-pex-link-label { flex: 1; min-width: 0; }
+.sb-pex-link-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  letter-spacing: .05em;
+  opacity: .55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── PAGINATION ───────────────────────────────────────────── */
 .mh-pagination {
@@ -727,6 +869,59 @@ body {
 
 <script>
 'use strict';
+
+/* ══════════════════════════════════════════════════════════════════
+   CHARGE-SCALE / UUS HELPERS
+   Shared between scoreboard player panels.
+══════════════════════════════════════════════════════════════════ */
+const AGENT_ABILITY_META_MH = {
+  "Astra":    { charges: {c:1,q:1,e:2,x:1}, ult_orbs:7  },
+  "Breach":   { charges: {c:1,q:2,e:1,x:1}, ult_orbs:8  },
+  "Brimstone":{ charges: {c:1,q:1,e:3,x:1}, ult_orbs:8  },
+  "Chamber":  { charges: {c:1,q:1,e:1,x:1}, ult_orbs:8  },
+  "Clove":    { charges: {c:1,q:1,e:2,x:1}, ult_orbs:8  },
+  "Cypher":   { charges: {c:2,q:2,e:1,x:1}, ult_orbs:7  },
+  "Deadlock": { charges: {c:1,q:2,e:1,x:1}, ult_orbs:7  },
+  "Fade":     { charges: {c:2,q:1,e:1,x:1}, ult_orbs:8  },
+  "Gekko":    { charges: {c:1,q:1,e:1,x:1}, ult_orbs:8  },
+  "Harbor":   { charges: {c:1,q:1,e:1,x:1}, ult_orbs:7  },
+  "Iso":      { charges: {c:1,q:1,e:1,x:1}, ult_orbs:7  },
+  "Jett":     { charges: {c:2,q:1,e:1,x:1}, ult_orbs:8  },
+  "KAYO":     { charges: {c:1,q:2,e:1,x:1}, ult_orbs:8  },
+  "Killjoy":  { charges: {c:2,q:1,e:1,x:1}, ult_orbs:9  },
+  "Miks":     { charges: {c:2,q:1,e:2,x:1}, ult_orbs:8  },
+  "Neon":     { charges: {c:1,q:1,e:1,x:1}, ult_orbs:8  },
+  "Omen":     { charges: {c:2,q:1,e:2,x:1}, ult_orbs:7  },
+  "Phoenix":  { charges: {c:1,q:1,e:2,x:1}, ult_orbs:6  },
+  "Raze":     { charges: {c:1,q:2,e:1,x:1}, ult_orbs:8  },
+  "Reyna":    { charges: {c:2,q:2,e:2,x:1}, ult_orbs:7  },
+  "Sage":     { charges: {c:1,q:2,e:1,x:1}, ult_orbs:7  },
+  "Skye":     { charges: {c:1,q:1,e:2,x:1}, ult_orbs:8  },
+  "Sova":     { charges: {c:1,q:2,e:1,x:1}, ult_orbs:8  },
+  "Tejo":     { charges: {c:1,q:1,e:2,x:1}, ult_orbs:9  },
+  "Veto":     { charges: {c:2,q:1,e:1,x:1}, ult_orbs:7  },
+  "Viper":    { charges: {c:1,q:1,e:1,x:1}, ult_orbs:9  },
+  "Vyse":     { charges: {c:2,q:1,e:1,x:1}, ult_orbs:8  },
+  "Waylay":   { charges: {c:1,q:1,e:1,x:1}, ult_orbs:8  },
+  "Yoru":     { charges: {c:1,q:1,e:2,x:1}, ult_orbs:8  },
+};
+
+function getMHMaxCPR(agentName) {
+  const meta = AGENT_ABILITY_META_MH[agentName];
+  if (!meta) return { c:1, q:1, e:1, x:1/7 };
+  return { c: meta.charges.c||1, q: meta.charges.q||1, e: meta.charges.e||1, x: 1/(meta.ult_orbs||7) };
+}
+
+// UUS: (avg non-ult fraction of capacity + ult fraction) / 2 × 100
+function computeUUSMH(agentName, cprC, cprQ, cprE, cprX) {
+  const m = getMHMaxCPR(agentName);
+  const utilFrac = ((Math.min(cprC,m.c)/m.c) + (Math.min(cprQ,m.q)/m.q) + (Math.min(cprE,m.e)/m.e)) / 3;
+  const ultFrac  = Math.min(cprX, m.x) / m.x;
+  return ((utilFrac + ultFrac) / 2) * 100;
+}
+
+// Global util display mode: 'raw' = CPR-based bars, 'charge' = charge-scaled + UUS
+let mhUtilMode = 'raw';
 
 /* ═══════════════════════════════════════════════════════════════
    PARTY COLORS — assign unique colors per party_id scoped to each match
@@ -1082,10 +1277,10 @@ function buildPlayerPanel(p, rounds) {
       <div class="sb-pex-stat-grid">
         <div class="sb-pex-stat">
           <div class="sb-pex-stat-label">KDA</div>
-          <div class="sb-pex-stat-val" style="font-size:12px;">${p.kda}</div>
+          <div class="sb-pex-stat-val kda-str">${p.kda}</div>
         </div>
         <div class="sb-pex-stat">
-          <div class="sb-pex-stat-label">K/D</div>
+          <div class="sb-pex-stat-label">K/D Ratio</div>
           <div class="sb-pex-stat-val ${kdaCls}">${kdaRatio.toFixed(2)}</div>
         </div>
         <div class="sb-pex-stat">
@@ -1097,20 +1292,17 @@ function buildPlayerPanel(p, rounds) {
           <div class="sb-pex-stat-val">${adrStr}</div>
         </div>
         <div class="sb-pex-stat">
-          <div class="sb-pex-stat-label">HS%</div>
+          <div class="sb-pex-stat-label">Headshot %</div>
           <div class="sb-pex-stat-val ${hsCls}">${hsStr}</div>
         </div>
         <div class="sb-pex-stat">
-          <div class="sb-pex-stat-label">FB</div>
+          <div class="sb-pex-stat-label">First Bloods</div>
           <div class="sb-pex-stat-val ${fbCls}">${fbStr}</div>
         </div>
         <div class="sb-pex-stat">
-          <div class="sb-pex-stat-label">FD</div>
+          <div class="sb-pex-stat-label">First Deaths</div>
           <div class="sb-pex-stat-val ${fdCls}">${fdStr}</div>
         </div>
-        <!-- TODO: add kills_per_round (kpr) when available in match_history.js player data -->
-        <!-- TODO: add damage_delta (damage dealt minus damage received) when available -->
-        <!-- TODO: add multi-kill rounds (mk2, mk3, mk4, mk5) when available -->
       </div>
     </div>`;
 
@@ -1118,13 +1310,31 @@ function buildPlayerPanel(p, rounds) {
   let utilInner = '';
   const casts = p.abilityCasts;
   if (casts) {
-    const maxVal = Math.max(casts.c||0, casts.q||0, casts.e||0, casts.x||0, 1);
     const abilityIcons = agentAssets?.abilities?.ability_icons || {};
     const abilityDescs = agentAssets?.abilities?.ability_descriptions || {};
+    const isChargeMode = mhUtilMode === 'charge';
+    const agentMeta = isChargeMode ? (AGENT_ABILITY_META_MH[p.agent] || null) : null;
+    const maxCPR    = isChargeMode ? getMHMaxCPR(p.agent) : null;
+
+    // UUS badge at top when in charge mode
+    if (isChargeMode && rounds && rounds > 0) {
+      const cprC = (casts.c ?? 0) / rounds, cprQ = (casts.q ?? 0) / rounds;
+      const cprE = (casts.e ?? 0) / rounds, cprX = (casts.x ?? 0) / rounds;
+      const uus = computeUUSMH(p.agent, cprC, cprQ, cprE, cprX);
+      const uusCol = uus >= 70 ? '#00d4aa' : uus >= 45 ? '#ffe84d' : '#ff4655';
+      utilInner += `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;" title="Utility Usage Score: fraction of charge capacity used, vs theoretical max. Ult scored at 1-orb/round cadence. 100% = perfect usage.">Util Usage Score</span>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${uusCol};">${uus.toFixed(1)}%</span>
+        </div>
+        <div style="height:2px;background:var(--border);margin-bottom:10px;position:relative;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${Math.min(100,uus)}%;background:${uusCol};"></div>
+        </div>`;
+    }
 
     ['c','q','e','x'].forEach(k => {
       const v    = casts[k] ?? 0;
-      const pct  = Math.min(100, (v / maxVal) * 100);
+      const cprVal = (rounds && rounds > 0) ? v / rounds : 0;
       const col  = SLOT_COL[k];
       const name = abilityNames[k] || k.toUpperCase();
       const desc = abilityDescs[k] || '';
@@ -1135,7 +1345,25 @@ function buildPlayerPanel(p, rounds) {
         ? `<img class="sb-pex-util-icon" src="${iconSrc}" alt="${name}" style="filter:drop-shadow(0 0 3px ${col}66);" onerror="this.outerHTML='<span class=sb-pex-util-icon-fallback style=color:${col}>${k.toUpperCase()}</span>'">`
         : `<span class="sb-pex-util-icon-fallback" style="color:${col}">${k.toUpperCase()}</span>`;
 
-      const cpr  = (rounds && rounds > 0) ? `<span class="sb-pex-util-cpr">${(v / rounds).toFixed(2)}/r</span>` : '';
+      let pct, rightHtml, chargeNote = '';
+      if (isChargeMode && maxCPR && rounds && rounds > 0) {
+        const cap = maxCPR[k];
+        const capPct = Math.min(100, (cprVal / cap) * 100);
+        pct = capPct;
+        // charge annotation
+        if (k === 'x') {
+          const orbCost = agentMeta ? agentMeta.ult_orbs : 7;
+          chargeNote = `<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:3px;">(${orbCost} orbs)</span>`;
+        } else if (agentMeta && (agentMeta.charges[k]||1) > 1) {
+          chargeNote = `<span style="font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-left:3px;">(${agentMeta.charges[k]} chg)</span>`;
+        }
+        rightHtml = `<span class="sb-pex-util-val" style="color:${col};font-weight:600;">${capPct.toFixed(0)}%</span>`
+          + `<span class="sb-pex-util-cpr" style="color:var(--text-dim);">${cprVal.toFixed(2)}/r</span>`;
+      } else {
+        pct  = Math.min(100, cprVal * 100);
+        const cpr = (rounds && rounds > 0) ? `<span class="sb-pex-util-cpr">${cprVal.toFixed(2)}/r</span>` : '';
+        rightHtml = `<span class="sb-pex-util-val">${v}</span>${cpr}`;
+      }
 
       const descHtml = desc
         ? `<div class="sb-pex-util-desc" id="${rowId}-desc">${desc}</div>`
@@ -1146,21 +1374,27 @@ function buildPlayerPanel(p, rounds) {
       utilInner += `
         <div class="sb-pex-util-row" ${clickAttr} title="${desc ? 'Click for ability details' : name}">
           ${iconHtml}
-          <span class="sb-pex-util-name">${name}</span>
+          <span class="sb-pex-util-name">${name}${chargeNote}</span>
           <div class="sb-pex-util-track">
             <div class="sb-pex-util-fill" style="width:${pct}%;background:${col};opacity:.75;"></div>
           </div>
-          <span class="sb-pex-util-val">${v}</span>
-          ${cpr}
+          ${rightHtml}
         </div>${descHtml}`;
     });
   } else {
     utilInner = `<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">No ability cast data.</div>`;
   }
 
+  const utilModeToggle = `
+    <div style="display:flex;gap:3px;margin-bottom:10px;">
+      <button class="mh-util-scale-btn${mhUtilMode==='raw'?' active':''}" onclick="event.stopPropagation();setMHUtilMode('raw')">CPR</button>
+      <button class="mh-util-scale-btn${mhUtilMode==='charge'?' active':''}" onclick="event.stopPropagation();setMHUtilMode('charge')">CHARGE %</button>
+    </div>`;
+
   const utilPanel = `
-    <div class="sb-pex-panel">
+    <div class="sb-pex-panel util-panel">
       <div class="sb-pex-title">Utility Usage</div>
+      ${utilModeToggle}
       ${utilInner}
     </div>`;
 
@@ -1205,7 +1439,7 @@ function buildPlayerPanel(p, rounds) {
       <!-- TODO: add henrikdev / riot API link for live rank lookup if API key is available -->
     </div>`;
 
-  return `<div class="sb-pex-content">${statsPanel}${utilPanel}${linksPanel}</div>`;
+  return `${statsPanel}${utilPanel}${linksPanel}`;
 }
 
 /* ── SCOREBOARD ROW ──────────────────────────────────────────── */
@@ -1251,7 +1485,7 @@ function sbRow(p, rounds) {
       <td class="${fdCls}">${fdStr}</td>
     </tr>
     <tr class="sb-pex-row" id="${rowId}">
-      <td colspan="8">${buildPlayerPanel(p, rounds)}</td>
+      <td colspan="8"><div class="sb-pex-content">${buildPlayerPanel(p, rounds)}</div></td>
     </tr>`;
 }
 
@@ -1460,6 +1694,31 @@ function renderSourceBadge() {
       <span style="color:var(--text-dim)">mock data — run generate_match_history.py to load real matches</span>`;
   }
   toolbar.appendChild(badge);
+}
+
+/* ── UTIL MODE TOGGLE ────────────────────────────────────────── */
+// Rebuilds ALL open player panels when the global util display mode changes.
+function rebuildOnePexContent(pexContent) {
+  const pexRow = pexContent.closest('tr.sb-pex-row');
+  if (!pexRow) return;
+  const card = pexRow.closest('.match-card');
+  if (!card) return;
+  const m = MATCHES.find(x => x.id === card.dataset.matchId);
+  if (!m) return;
+  const playerRow = pexRow.previousElementSibling;
+  if (!playerRow) return;
+  const playerName = playerRow.querySelector('.sb-player-name')?.textContent?.replace(/▶/g,'').trim();
+  if (!playerName) return;
+  const allPlayers = [...(m.scoreboard.blue||[]), ...(m.scoreboard.red||[])];
+  const player = allPlayers.find(pl => pl.name === playerName);
+  if (!player) return;
+  pexContent.innerHTML = buildPlayerPanel(player, m.rounds);
+}
+
+function setMHUtilMode(mode) {
+  mhUtilMode = mode;
+  // Rebuild all currently-open player expand panels so bars/mode reflect the change
+  document.querySelectorAll('tr.sb-pex-row.open .sb-pex-content').forEach(rebuildOnePexContent);
 }
 
 /* ── INIT ────────────────────────────────────────────────────── */
